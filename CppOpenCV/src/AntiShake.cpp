@@ -8,8 +8,8 @@
 
 #include <stdlib.h>
 #include "AntiShake.h"
-#include "Histogram1D.h"
-#include <opencv2/nonfree/features2d.hpp>
+#include "opencv2/highgui/highgui.hpp"
+#include "opencv2/nonfree/features2d.hpp"
 
 #define MATCHES_MEAN_DIST 0
 #define MATCHES_QUADRANTS 1

@@ -60,7 +60,7 @@ src/AntiShake.d src/AntiShake.o: ../src/AntiShake.cpp ../src/AntiShake.h \
   /opt/local/include/opencv2/core/core_c.h \
   /opt/local/include/opencv2/imgproc/types_c.h \
   /opt/local/include/opencv2/core/internal.hpp \
-  /opt/local/include/opencv2/core/core.hpp ../src/Histogram1D.h \
+  /opt/local/include/opencv2/core/core.hpp \
   /opt/local/include/opencv2/highgui/highgui.hpp \
   /opt/local/include/opencv2/core/core.hpp \
   /opt/local/include/opencv2/highgui/highgui_c.h \
@@ -195,8 +195,6 @@ src/AntiShake.d src/AntiShake.o: ../src/AntiShake.cpp ../src/AntiShake.h \
 /opt/local/include/opencv2/core/internal.hpp:
 
 /opt/local/include/opencv2/core/core.hpp:
-
-../src/Histogram1D.h:
 
 /opt/local/include/opencv2/highgui/highgui.hpp:
 

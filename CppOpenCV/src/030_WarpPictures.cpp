@@ -10,6 +10,7 @@
 #include "Layer.h"
 #include "dirent.h"
 #include <iostream>
+#include "LibCpp.hpp"
 
 using namespace std;
 using namespace cv;
@@ -25,6 +26,7 @@ int fetchSharpAreas(int argc, char** argv);
  * @brief Main function
  */
 int main(int argc, char** argv) {
+	cout << "a+b =" << add(3,4) << endl;
 	cv::Mat img1 = cv::imread(argv[1]);
 	cv::Mat img2 = cv::imread(argv[2]);
 	fixPictures(img1, img2);
