@@ -27,9 +27,13 @@ int fetchSharpAreas(int argc, char** argv);
  */
 int main(int argc, char** argv) {
 	cout << "a+b =" << add(3,4) << endl;
-	cv::Mat img1 = cv::imread(argv[1]);
-	cv::Mat img2 = cv::imread(argv[2]);
-	fixPictures(img1, img2);
+	cv::Mat img1 = cv::imread("/Users/marcelosalloum/Projects/CppOpenCV/CppOpenCV/Debug/aux/foot0.jpeg");
+	cv::Mat img2 = cv::imread("/Users/marcelosalloum/Projects/CppOpenCV/CppOpenCV/Debug/aux/foot1.jpeg");
+
+	antishake();
+//	cv::Mat img1 = cv::imread(argv[1]);
+//	cv::Mat img2 = cv::imread(argv[2]);
+//	fixPictures(img1, img2);
 
 	waitKey(0);
 	//TODO

@@ -10,12 +10,13 @@ setup(
     ext_modules=[
         Extension("rectangle",
             sources=["rectangle.pyx", "cpp_rect.cpp"], # Note, you can link against a c++ library instead of including the source
-            include_dirs=[".","source" , "/opt/local/include/opencv", "/opt/local/include"],
+            include_dirs=[".","source", "/opt/local/include/opencv", "/opt/local/include"],
             language="c++",
             # extra_link_args = ['-arch x86_64'],
             # extra_link_args = ['-arch i386', '-arch x86_64'],
-            library_dirs=['/opt/local/lib', 'source'],
-            libraries=['opencv_core', 'LibCppOpenCV'])
+            library_dirs=['/opt/local/lib', 'source', '/Users/marcelosalloum/Projects/CppOpenCV/python_cpp_interface/source'],
+            runtime_library_dirs=['source'],
+            libraries=['LibCppOpenCV'])
     ],
     cmdclass = {'build_ext': build_ext},
 )

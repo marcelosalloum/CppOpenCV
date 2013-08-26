@@ -1,9 +1,6 @@
 // #include "opencv2/highgui/highgui.hpp"
 // #include "opencv2/opencv.hpp"
-#include "AntiShake.h"
 #include <iostream>
-#include "cv.h"
-using namespace cv;
 
 class Rectangle {
 public:

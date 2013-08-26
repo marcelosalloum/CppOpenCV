@@ -19,10 +19,11 @@ void Rectangle::openCV(){
 	std::cout << "HELLO WORLD" << std::endl;
 	std::string file_1 = "/Projects/Eclipse/workspace/eclipse_cpp/OpenCV/Debug/aux/foot0.jpeg";
 	std::string file_2 = "/Projects/Eclipse/workspace/eclipse_cpp/OpenCV/Debug/aux/foot1.jpeg";
-	
-	cv::Mat img1(7,7,CV_32FC2,Scalar(1,3));
-	cout << img1.rows<<endl;
-	cout << add(3,8) <<endl;
+
+	antishake();
+	// cv::Mat img1(7,7,CV_32FC2,Scalar(1,3));
+	// cout << img1.rows<<endl;
+	// cout << add(3,8) <<endl;
 	// AntiShake *aux = new AntiShake();
 // cv::Mat img1 = cv::imread(file_1);
 // 	cv::Mat img2 = cv::imread(file_2);
