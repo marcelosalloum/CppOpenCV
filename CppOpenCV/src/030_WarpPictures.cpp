@@ -26,11 +26,11 @@ int fetchSharpAreas(int argc, char** argv);
  * @brief Main function
  */
 int main(int argc, char** argv) {
-	cout << "a+b =" << add(3,4) << endl;
-	cv::Mat img1 = cv::imread("/Users/marcelosalloum/Projects/CppOpenCV/CppOpenCV/Debug/aux/foot0.jpeg");
-	cv::Mat img2 = cv::imread("/Users/marcelosalloum/Projects/CppOpenCV/CppOpenCV/Debug/aux/foot1.jpeg");
+	cout << "a+b =" << add(3, 4) << endl;
+//	cv::Mat img1 = cv::imread("/Users/marcelosalloum/Projects/CppOpenCV/CppOpenCV/Debug/aux/foot0.jpeg");
+//	cv::Mat img2 = cv::imread("/Users/marcelosalloum/Projects/CppOpenCV/CppOpenCV/Debug/aux/foot1.jpeg");
 
-	antishake();
+	antishake(argv[1], argv[2]);
 //	cv::Mat img1 = cv::imread(argv[1]);
 //	cv::Mat img2 = cv::imread(argv[2]);
 //	fixPictures(img1, img2);
@@ -40,7 +40,7 @@ int main(int argc, char** argv) {
 	return 0;
 }
 
-cv::Mat cropBeta(cv::Mat &img){
+cv::Mat cropBeta(cv::Mat &img) {
 	// Convert RGB Mat to GRAY
 	cv::Mat gray;
 	cv::cvtColor(img, gray, CV_BGR2GRAY);
@@ -60,13 +60,13 @@ cv::Mat cropBeta(cv::Mat &img){
 	// Draw bounding box in the original image (debug purposes)
 	cv::Point2f vertices[4];
 	vertices[0] = Point2f(box.x, box.y);
-	vertices[1] = Point2f(box.x+ box.width, box.y);
-	vertices[2] = Point2f(box.x, box.y  +box.height);
-	vertices[3] = Point2f(box.x+ box.width, box.y   +box.height);
+	vertices[1] = Point2f(box.x + box.width, box.y);
+	vertices[2] = Point2f(box.x, box.y + box.height);
+	vertices[3] = Point2f(box.x + box.width, box.y + box.height);
 
 	cv::Mat markedImage;
 	img.copyTo(markedImage);
-	cv::rectangle(markedImage, vertices[0], vertices[3], cv::Scalar(0,255,0));
+	cv::rectangle(markedImage, vertices[0], vertices[3], cv::Scalar(0, 255, 0));
 
 	cv::Mat finalImage;
 	img(box).copyTo(finalImage);
@@ -76,7 +76,6 @@ cv::Mat cropBeta(cv::Mat &img){
 	cv::imshow("firstCrop", finalImage);
 	return finalImage;
 }
-
 
 /* This method reads all files of a given directory and shows its a binary file with its highFrequencies (marks
  * white pixels where there is sharp focus and left the rest in black).

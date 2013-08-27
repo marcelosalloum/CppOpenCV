@@ -15,12 +15,12 @@ Rectangle::Rectangle(int a, int b, int c, int d) {
 Rectangle::~Rectangle() {
 }
 
-void Rectangle::openCV(){
+void Rectangle::openCV(char* path1, char* path2){
 	std::cout << "HELLO WORLD" << std::endl;
-	std::string file_1 = "/Projects/Eclipse/workspace/eclipse_cpp/OpenCV/Debug/aux/foot0.jpeg";
-	std::string file_2 = "/Projects/Eclipse/workspace/eclipse_cpp/OpenCV/Debug/aux/foot1.jpeg";
+	// std::string file_1 = "/Users/marcelosalloum/Projects/CppOpenCV/CppOpenCV/Debug/aux/foot0.jpeg";
+	// std::string file_2 = "/Users/marcelosalloum/Projects/CppOpenCV/CppOpenCV/Debug/aux/foot1.jpeg";
 
-	antishake();
+	antishake(path1, path2);
 	// cv::Mat img1(7,7,CV_32FC2,Scalar(1,3));
 	// cout << img1.rows<<endl;
 	// cout << add(3,8) <<endl;

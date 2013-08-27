@@ -12,6 +12,6 @@ public:
     int getHeight();
     int getArea();
     void move(int dx, int dy);
-	void openCV();
+	void openCV(char* path1, char* path2);
     Rectangle operator+(const Rectangle& other);
 };

@@ -10,7 +10,7 @@
 
 
 int add(int a, int b);
-void antishake();
+void antishake(std::string path1, std::string path2);
 
 
 #endif /* LIBCPP_HPP_ */
