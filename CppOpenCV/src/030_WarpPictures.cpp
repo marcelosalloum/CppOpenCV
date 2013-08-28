@@ -17,7 +17,6 @@ using namespace cv;
 
 cv::Mat cropBeta(cv::Mat &img);
 void readme();
-void fixPictures(Mat &img_1, Mat img_2);
 int fetchSharpAreas(int argc, char** argv);
 //int oldmain(int argc, char** argv);
 
@@ -27,13 +26,22 @@ int fetchSharpAreas(int argc, char** argv);
  */
 int main(int argc, char** argv) {
 	cout << "a+b =" << add(3, 4) << endl;
-//	cv::Mat img1 = cv::imread("/Users/marcelosalloum/Projects/CppOpenCV/CppOpenCV/Debug/aux/foot0.jpeg");
-//	cv::Mat img2 = cv::imread("/Users/marcelosalloum/Projects/CppOpenCV/CppOpenCV/Debug/aux/foot1.jpeg");
 
-	antishake(argv[1], argv[2]);
-//	cv::Mat img1 = cv::imread(argv[1]);
-//	cv::Mat img2 = cv::imread(argv[2]);
-//	fixPictures(img1, img2);
+	cv::Mat img_1 = cv::imread(argv[1]);
+	cv::Mat img_2 = cv::imread(argv[2]);
+
+	AntiShake *aux = AntiShake::getInstance();
+	Mat H = aux->fixPictures(img_1, img_2, 1);
+
+	aux->displayWindow(img_1, "antiSHake1", true);
+	aux->displayWindow(img_2, "antiShake2", true);
+
+	//  ==== storing data ====
+	std::stringstream ss;
+	ss << H;
+	//	return [NSString stringWithCString:ss.str().c_str() encoding:NSASCIIStringEncoding];
+
+	cout << "++++++" << ss.str().c_str() << endl;
 
 	waitKey(0);
 	//TODO
@@ -142,21 +150,6 @@ int fetchSharpAreas(int argc, char** argv) {
 	waitKey(0);
 
 	return 0;
-}
-
-void fixPictures(Mat &img_1, Mat img_2) {
-	AntiShake *aux = AntiShake::getInstance();
-	Mat H = aux->fixPictures(img_1, img_2, 1);
-
-	aux->displayWindow(img_1, "antiSHake1", true);
-	aux->displayWindow(img_2, "antiShake2", true);
-
-	//  ==== storing data ====
-	std::stringstream ss;
-	ss << H;
-	//	return [NSString stringWithCString:ss.str().c_str() encoding:NSASCIIStringEncoding];
-
-	cout << "++++++" << ss.str().c_str() << endl;
 }
 
 /**

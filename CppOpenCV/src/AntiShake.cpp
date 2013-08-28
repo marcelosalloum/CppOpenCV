@@ -81,10 +81,10 @@ void AntiShake::applyHomography(Mat &homography, Mat &img_1, Mat &img_2) {
  * starts to increase, the loop stops*/
 cv::Mat AntiShake::getHomographyFeedbackController(Mat &img_1, Mat &img_2,
 		int loops) {
-
-	// STEP 0: RE-ESCALE, SO THE BIGGEST RESOLUTION IS 590x(something smaller than 590)
+	//TODO Change loops to variable
+	// STEP 0: RE-ESCALE, SO THE BIGGEST RESOLUTION IS 590x(something <= 590)
 	Mat workImage1, workImage2;
-	double scale = 1.0 / (MAX(img_1.rows,img_1.cols) / 590.0);
+	double scale = 1.0 / (MAX(img_1.rows,img_1.cols) / 590.0);	//TODO Change 590 to variable
 	workImage1.create(scale * img_1.rows, scale * img_1.cols, img_1.type());
 	workImage2.create(scale * img_2.rows, scale * img_2.cols, img_2.type());
 	cv::resize(img_1, workImage1, workImage1.size());
@@ -151,7 +151,7 @@ cv::Mat AntiShake::getHomographyFeedbackController(Mat &img_1, Mat &img_2,
 	}
 }
 
-void AntiShake::reduceDifferences(Mat &img_1, Mat &img_2, Mat &workImage1,
+void AntiShake::reduceDifferences(Mat &img_1, Mat &img_2, Mat &workImage1,//TODO
 		Mat &workImage2) {
 
 	img_1.copyTo(workImage1);
@@ -159,7 +159,7 @@ void AntiShake::reduceDifferences(Mat &img_1, Mat &img_2, Mat &workImage1,
 	cout << "=== STEP 1 complete: created workImage" << endl;
 
 	// STEP 2: COMPENSATE BRIGHTNES
-	compensateBrightness(workImage1, workImage2, workImage1, workImage2);
+	compensateBrightness(workImage1, workImage2, workImage1, workImage2);//TODO
 	cout << "=== STEP 2 complete: compensateBrightness" << endl;
 
 	// STEP 3: BLUR EVERYTHING TO NORMALIZE THE SOURCE IMAGES
@@ -173,7 +173,7 @@ void AntiShake::reduceDifferences(Mat &img_1, Mat &img_2, Mat &workImage1,
 	cout << "=== STEP 4 complete: sobelOperator" << endl;
 }
 
-// WARP 2 PICTURES
+// Detect keypoints and find
 cv::Mat AntiShake::antiShake(Mat &img_1, Mat &img_2, int matches_type, int numberOfMatches) {
 
 	Mat workImage1, workImage2;
