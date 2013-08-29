@@ -7,14 +7,15 @@ src/030_WarpPictures.d src/030_WarpPictures.o:  \
   /opt/local/include/opencv2/core/operations.hpp \
   /opt/local/include/opencv2/core/mat.hpp \
   /opt/local/include/opencv2/highgui/highgui_c.h \
+  /opt/local/include/opencv2/core/core_c.h \
+  /opt/local/include/opencv2/imgproc/imgproc.hpp \
+  /opt/local/include/opencv2/core/core.hpp \
+  /opt/local/include/opencv2/imgproc/types_c.h \
   /opt/local/include/opencv2/core/core_c.h ../src/AntiShake.h \
   /opt/local/include/opencv/cv.h /opt/local/include/opencv2/core/core_c.h \
   /opt/local/include/opencv2/core/core.hpp \
   /opt/local/include/opencv2/imgproc/imgproc_c.h \
-  /opt/local/include/opencv2/core/core_c.h \
-  /opt/local/include/opencv2/imgproc/types_c.h \
   /opt/local/include/opencv2/imgproc/imgproc.hpp \
-  /opt/local/include/opencv2/core/core.hpp \
   /opt/local/include/opencv2/video/tracking.hpp \
   /opt/local/include/opencv2/core/core.hpp \
   /opt/local/include/opencv2/imgproc/imgproc.hpp \
@@ -85,6 +86,14 @@ src/030_WarpPictures.d src/030_WarpPictures.o:  \
 
 /opt/local/include/opencv2/core/core_c.h:
 
+/opt/local/include/opencv2/imgproc/imgproc.hpp:
+
+/opt/local/include/opencv2/core/core.hpp:
+
+/opt/local/include/opencv2/imgproc/types_c.h:
+
+/opt/local/include/opencv2/core/core_c.h:
+
 ../src/AntiShake.h:
 
 /opt/local/include/opencv/cv.h:
@@ -95,13 +104,7 @@ src/030_WarpPictures.d src/030_WarpPictures.o:  \
 
 /opt/local/include/opencv2/imgproc/imgproc_c.h:
 
-/opt/local/include/opencv2/core/core_c.h:
-
-/opt/local/include/opencv2/imgproc/types_c.h:
-
 /opt/local/include/opencv2/imgproc/imgproc.hpp:
-
-/opt/local/include/opencv2/core/core.hpp:
 
 /opt/local/include/opencv2/video/tracking.hpp:
 
