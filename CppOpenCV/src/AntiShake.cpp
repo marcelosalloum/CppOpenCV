@@ -32,9 +32,9 @@ AntiShake *AntiShake::getInstance() {
 }
 
 cv::Mat AntiShake::fixPictures(Mat &img_1, Mat &img_2, int loops, double final_pic_size,
-		double maxDetDiff) {
+		double maxDetDiff, int featurePoints, int coreSize) {
 	// Firstly we calculate the Homography matrix and refine it in the FeedbackController function:
-	Mat H = getHomographyFeedbackController(img_1, img_2, loops, final_pic_size);
+	Mat H = calcHomographyFeedbackController(img_1, img_2, loops, final_pic_size, featurePoints, coreSize);
 	double det = determinant(H);
 	cout << "STEP 11 final homography = " << endl << H << endl << " determinant = " << det << endl;
 
@@ -70,7 +70,7 @@ void AntiShake::applyHomography(Mat &homography, Mat &img_1, Mat &img_2) {
 		img_2.copyTo(original);
 		cv::warpPerspective(img_1,  // input image
 				compensated,        // output image
-				homography, cv::Size(img_1.cols, img_1.rows), INTER_LINEAR); // size of output image
+				homography, cv::Size(img_1.cols, img_1.rows), INTER_CUBIC); // size of output image
 		original.copyTo(img_1);
 		compensated.copyTo(img_2);
 		cout << endl << "==== STEP 10 complete: distortion fix applied" << endl << endl;
@@ -80,15 +80,15 @@ void AntiShake::applyHomography(Mat &homography, Mat &img_1, Mat &img_2) {
 /* It is a function that call getHoography multiple times and measure its accuracy.
  * If it runs the function more than the maxLoop value or if the accuracy measure
  * starts to increase, the loop stops*/
-cv::Mat AntiShake::getHomographyFeedbackController(Mat &img_1, Mat &img_2, int loops,
-		double final_pic_size) {
+cv::Mat AntiShake::calcHomographyFeedbackController(Mat &img_1, Mat &img_2, int loops,
+		double final_pic_size, int featurePoints, int coreSize) {
 	// STEP 0: RE-ESCALE, SO THE BIGGEST RESOLUTION IS 590x(something <= 590)
 	Mat workImage1, workImage2;
 	double scale = 1.0 / (MAX(img_1.rows,img_1.cols) / final_pic_size);
 	workImage1.create(scale * img_1.rows, scale * img_1.cols, img_1.type());
 	workImage2.create(scale * img_2.rows, scale * img_2.cols, img_2.type());
-	cv::resize(img_1, workImage1, workImage1.size());
-	cv::resize(img_2, workImage2, workImage2.size());
+	cv::resize(img_1, workImage1, workImage1.size(), 0, 0, INTER_CUBIC);
+	cv::resize(img_2, workImage2, workImage2.size(), 0, 0, INTER_CUBIC);
 	cout << "=== STEP 0 complete: RE-ESCALE" << endl;
 
 	// LETS NOW START TO ITERATE IN ORTHER TO get a Homography matrix and refine it
@@ -100,7 +100,9 @@ cv::Mat AntiShake::getHomographyFeedbackController(Mat &img_1, Mat &img_2, int l
 		loopCounter++;
 		try {
 			//TODO EXTERNALIZE VARIABLES:
-			homography = antiShake(workImage1, workImage2, MATCHES_MEAN_DIST, 60, 4); // exceptions could appear here... //STEPS 1 to 8 there.
+			int matchesType = MATCHES_MEAN_DIST;
+			//pixels:
+			homography = antiShake(workImage1, workImage2, matchesType, featurePoints, coreSize); // exceptions could appear here... //STEPS 1 to 8 there.
 			double det = determinant(homography);
 			Mat eigen;
 			cv::eigen(homography, eigen);
@@ -148,6 +150,7 @@ cv::Mat AntiShake::getHomographyFeedbackController(Mat &img_1, Mat &img_2, int l
 					<< "ATTENTION ON THE ANTISHAKE.CPP CLASS: exception found in the function getHomographyFeedbackController. ERROR: "
 					<< e.err << endl;
 			homography = (Mat_<double>(3, 3) << 1, 0, 0, 0, 1, 0, 0, 0, 1);
+			cout << "IDENTITY 1" << endl;
 		}
 	} while (loopCounter < loops || homography.empty());
 
@@ -162,8 +165,6 @@ cv::Mat AntiShake::getHomographyFeedbackController(Mat &img_1, Mat &img_2, int l
 		return Hs[0];
 	}
 }
-//void AntiShake::reduceDifferences(Mat &img_1, Mat &img_2, Mat &workImage1, //TODO
-//		Mat &workImage2, int blur1, int blur2) {
 
 void AntiShake::reduceDifferences(Mat &img_1, Mat &img_2, Mat &workImage1, Mat &workImage2, int blur1,
 		int blur2) {
@@ -185,51 +186,22 @@ void AntiShake::reduceDifferences(Mat &img_1, Mat &img_2, Mat &workImage1, Mat &
 //	sobelOperator(workImage1, workImage1, 5, 1); // TODO
 //	sobelOperator(workImage2, workImage2, 5, 1);
 //	cout << "=== STEP 4 complete: sobelOperator" << endl;
+
 	cv::cvtColor(workImage1, workImage1, CV_BGR2GRAY);
 	cv::cvtColor(workImage2, workImage2, CV_BGR2GRAY);
-
 	workImage1 = BorderDetector(workImage1, 3);
 	workImage2 = BorderDetector(workImage2, 3);
+	cout << "=== STEP 4 complete: sobelOperator" << endl;
 }
 
-//void AntiShake::reduceDifferences(Mat &img_1, Mat &img_2, Mat &workImage1, Mat &workImage2, int blur1,
-//		int blur2) {
-//	Mat buff1, buff2;
-//	img_1.copyTo(buff1);
-//	img_2.copyTo(buff2);
-//	cout << "=== STEP 1 complete: created workImage" << endl;
-//
-//	displayWindow(buff1,"out/A1_ORIGINAL", true);
-//	displayWindow(buff2,"out/A2_ORIGINAL", true);
-//	// STEP 2: COMPENSATE BRIGHTNES
-//	compensateBrightness(workImage1, workImage2, buff1, buff2); //OK
-//	displayWindow(buff1,"out/B1_BRIGHTNESS", true);
-//	displayWindow(buff2,"out/B2_Brightness", true);
-//	cout << "=== STEP 2 complete: compensateBrightness" << endl;
-//
-////	// STEP 3: BLUR EVERYTHING TO NORMALIZE THE SOURCE IMAGES
-////	compensateBlurriness(workImage1, buff1, blur1);
-////	compensateBlurriness(workImage2, buff2, blur2);
-////	displayWindow(buff1, "out/C1_Blurriness", true);
-////	displayWindow(buff2, "out/C2_Blurriness", true);
-////	cout << "=== STEP 3 complete: compensate Blurriness" << endl;
-//
-//	// STEP 4: SOBEL OPERATOR (BORDERS)
-//	sobelOperator(buff1, buff1, 5, 1); // TODO
-//	sobelOperator(buff2, buff2, 5, 1);
-//	displayWindow(buff1, "out/D1_sobelOperator", true);
-//	displayWindow(buff2, "out/D2_sobelOperator", true);
-//	cout << "=== STEP 4 complete: sobelOperator" << endl;
-//}
-
 // Detect keypoints and find
-cv::Mat AntiShake::antiShake(Mat &img_1, Mat &img_2, int matches_type, int numberOfMatches, int ffd) {
+cv::Mat AntiShake::antiShake(Mat &img_1, Mat &img_2, int matches_type, int numberOfMatches, int corePx) {
 
 	Mat workImage1, workImage2;
 	reduceDifferences(img_1, img_2, workImage1, workImage2, 7, 7); // STEPS 1 to 4 here
 
 	// STEP 5: KeyPoint Detection:
-	cv::FeatureDetector *detector = new cv::FastFeatureDetector(ffd, true);
+	cv::FeatureDetector *detector = new cv::FastFeatureDetector(corePx, true);
 	std::vector<KeyPoint> keypoints_1, keypoints_2;
 	detector->detect(workImage1, keypoints_1);
 	detector->detect(workImage2, keypoints_2);
@@ -273,10 +245,11 @@ cv::Mat AntiShake::getHomography(std::vector<Point2f> &pts1, std::vector<Point2f
 
 	if (validate) {
 		//Checks if some of the values are too out of normal. If so, sets matrix to Identity
-		if (abs(HReference.at<double>(2, 0) > 0.0002) || abs(HReference.at<double>(2, 1) > 0.0002)) {
-			cout << "Identity matrix set in AntiShake::getHomography" << endl;
+		if (abs(HReference.at<double>(2, 0) > 0.0002) || abs(HReference.at<double>(2, 1) > 0.0002)){
+			cout << "IDENTITY 2" << "Identity matrix set in AntiShake::getHomography" << endl;
 			HReference = (Mat_<double>(3, 3) << 1, 0, 0, 0, 1, 0, 0, 0, 1);
 		} else if (abs(determinant(HReference) - 1) >= maxDetDiff) {
+			cout << "IDENTITY 3" << endl;
 			HReference = (Mat_<double>(3, 3) << 1, 0, 0, 0, 1, 0, 0, 0, 1);
 		}
 	}
@@ -285,122 +258,121 @@ cv::Mat AntiShake::getHomography(std::vector<Point2f> &pts1, std::vector<Point2f
 
 void AntiShake::cvShowManyImages(char* title, int nArgs, ...) {
 
-    // img - Used for getting the arguments
-    IplImage *img;
+	// img - Used for getting the arguments
+	IplImage *img;
 
-    // DispImage - the image in which input images are to be copied
-    IplImage *DispImage;
+	// DispImage - the image in which input images are to be copied
+	IplImage *DispImage;
 
-    int size;
-    int i;
-    int m, n;
-    int x, y;
+	int size;
+	int i;
+	int m, n;
+	int x, y;
 
-    // w - Maximum number of images in a row
-    // h - Maximum number of images in a column
-    int w, h;
+	// w - Maximum number of images in a row
+	// h - Maximum number of images in a column
+	int w, h;
 
-    // scale - How much we have to resize the image
-    float scale;
-    int max;
+	// scale - How much we have to resize the image
+	float scale;
+	int max;
 
-    // If the number of arguments is lesser than 0 or greater than 12
-    // return without displaying
-    if(nArgs <= 0) {
-        printf("Number of arguments too small....\n");
-        return;
-    }
-    else if(nArgs > 12) {
-        printf("Number of arguments too large....\n");
-        return;
-    }
-    // Determine the size of the image,
-    // and the number of rows/cols
-    // from number of arguments
-    else if (nArgs == 1) {
-        w = h = 1;
-        size = 300;
-    }
-    else if (nArgs == 2) {
-        w = 2; h = 1;
-        size = 300;
-    }
-    else if (nArgs == 3 || nArgs == 4) {
-        w = 2; h = 2;
-        size = 300;
-    }
-    else if (nArgs == 5 || nArgs == 6) {
-        w = 3; h = 2;
-        size = 200;
-    }
-    else if (nArgs == 7 || nArgs == 8) {
-        w = 4; h = 2;
-        size = 200;
-    }
-    else {
-        w = 4; h = 3;
-        size = 150;
-    }
+	// If the number of arguments is lesser than 0 or greater than 12
+	// return without displaying
+	if (nArgs <= 0) {
+		printf("Number of arguments too small....\n");
+		return;
+	} else if (nArgs > 12) {
+		printf("Number of arguments too large....\n");
+		return;
+	}
+	// Determine the size of the image,
+	// and the number of rows/cols
+	// from number of arguments
+	else if (nArgs == 1) {
+		w = h = 1;
+		size = 300;
+	} else if (nArgs == 2) {
+		w = 2;
+		h = 1;
+		size = 300;
+	} else if (nArgs == 3 || nArgs == 4) {
+		w = 2;
+		h = 2;
+		size = 300;
+	} else if (nArgs == 5 || nArgs == 6) {
+		w = 3;
+		h = 2;
+		size = 200;
+	} else if (nArgs == 7 || nArgs == 8) {
+		w = 4;
+		h = 2;
+		size = 200;
+	} else {
+		w = 4;
+		h = 3;
+		size = 150;
+	}
 
-    // Create a new 3 channel image
-    DispImage = cvCreateImage( cvSize(100 + size*w, 60 + size*h), 8, 3 );
+	// Create a new 3 channel image
+	DispImage = cvCreateImage(cvSize(100 + size * w, 60 + size * h), 8, 3);
 
-    // Used to get the arguments passed
-    va_list args;
-    va_start(args, nArgs);
+	// Used to get the arguments passed
+	va_list args;
+	va_start(args, nArgs);
 
-    // Loop for nArgs number of arguments
-    for (i = 0, m = 20, n = 20; i < nArgs; i++, m += (20 + size)) {
+	// Loop for nArgs number of arguments
+	for (i = 0, m = 20, n = 20; i < nArgs; i++, m += (20 + size)) {
 
-        // Get the Pointer to the IplImage
-        img = va_arg(args, IplImage*);
+		// Get the Pointer to the IplImage
+		img = va_arg(args, IplImage*);
 
-        // Check whether it is NULL or not
-        // If it is NULL, release the image, and return
-        if(img == 0) {
-            printf("Invalid arguments");
-            cvReleaseImage(&DispImage);
-            return;
-        }
+		// Check whether it is NULL or not
+		// If it is NULL, release the image, and return
+		if (img == 0) {
+			printf("Invalid arguments");
+			cvReleaseImage(&DispImage);
+			return;
+		}
 
-        // Find the width and height of the image
-        x = img->width;
-        y = img->height;
+		// Find the width and height of the image
+		x = img->width;
+		y = img->height;
 
-        // Find whether height or width is greater in order to resize the image
-        max = (x > y)? x: y;
+		// Find whether height or width is greater in order to resize the image
+		max = (x > y) ? x : y;
 
-        // Find the scaling factor to resize the image
-        scale = (float) ( (float) max / size );
+		// Find the scaling factor to resize the image
+		scale = (float) ((float) max / size);
 
-        // Used to Align the images
-        if( i % w == 0 && m!= 20) {
-            m = 20;
-            n+= 20 + size;
-        }
+		// Used to Align the images
+		if (i % w == 0 && m != 20) {
+			m = 20;
+			n += 20 + size;
+		}
 
-        // Set the image ROI to display the current image
-        cvSetImageROI(DispImage, cvRect(m, n, (int)( x/scale ), (int)( y/scale )));
+		// Set the image ROI to display the current image
+		cvSetImageROI(DispImage, cvRect(m, n, (int) (x / scale), (int) (y / scale)));
 
-        // Resize the input image and copy the it to the Single Big Image
-        cvResize(img, DispImage);
+		// Resize the input image and copy the it to the Single Big Image
+		cvResize(img, DispImage);
 
-        // Reset the ROI in order to display the next image
-        cvResetImageROI(DispImage);
-    }
+		// Reset the ROI in order to display the next image
+		cvResetImageROI(DispImage);
+	}
 
-    // Create a new window, and show the Single Big Image
-    cvNamedWindow( title, 1 );
-    cvShowImage( title, DispImage);
+	// Create a new window, and show the Single Big Image
+	cvNamedWindow(title, 1);
+	cvShowImage(title, DispImage);
 
-    cvWaitKey();
-    cvDestroyWindow(title);
+	cvWaitKey();
+	cvDestroyWindow(title);
 
-    // End the number of arguments
-    va_end(args);
+	// End the number of arguments
+	va_end(args);
 
-    // Release the Image Memory
-    cvReleaseImage(&DispImage);
+	// Release the Image Memory
+	cvReleaseImage(&DispImage);
 }
 
 //CALL DIFFERENT ALGORITHMS:
@@ -580,13 +552,15 @@ void AntiShake::meanDistancesMatches(int nthNumber, std::vector<DMatch> &matches
 		meanDistance += dist;
 	}
 	meanDistance = meanDistance / matches.size();
-
+// todo
 //	steb B: filters the points by mean Distance
 	std::vector<DMatch> new_matches;
+	Point2f *p1, *p2;
+	double dist;
 	for (unsigned int i = 0; i < matches.size(); i++) {
-		Point2f p1 = keypoints_1[matches[i].queryIdx].pt;
-		Point2f p2 = keypoints_2[matches[i].trainIdx].pt;
-		double dist = sqrt(pow((p1.x - p2.x), 2) + pow((p1.y - p2.y), 2));
+		*p1 = keypoints_1[matches[i].queryIdx].pt;
+		*p2 = keypoints_2[matches[i].trainIdx].pt;
+		dist = sqrt(pow((p1->x - p2->x), 2) + pow((p1->y - p2->y), 2));
 		if (dist <= 0.4 * meanDistance) {
 			new_matches.push_back(matches[i]);
 		}
@@ -596,9 +570,9 @@ void AntiShake::meanDistancesMatches(int nthNumber, std::vector<DMatch> &matches
 	if (new_matches.size() <= 30) {
 		new_matches.clear();
 		for (unsigned int i = 0; i < matches.size(); i++) {
-			Point2f p1 = keypoints_1[matches[i].queryIdx].pt;
-			Point2f p2 = keypoints_2[matches[i].trainIdx].pt;
-			double dist = sqrt(pow((p1.x - p2.x), 2) + pow((p1.y - p2.y), 2));
+			*p1 = keypoints_1[matches[i].queryIdx].pt;
+			*p2 = keypoints_2[matches[i].trainIdx].pt;
+			dist = sqrt(pow((p1->x - p2->x), 2) + pow((p1->y - p2->y), 2));
 			if (dist <= meanDistance) {
 				new_matches.push_back(matches[i]);
 			}

@@ -11,7 +11,6 @@
 #include "Layer.h"
 #include "dirent.h"
 #include <iostream>
-#include "LibCpp.hpp"
 
 using namespace std;
 using namespace cv;
@@ -26,7 +25,6 @@ int fetchSharpAreas(int argc, char** argv);
  * @brief Main function
  */
 int main(int argc, char** argv) {
-	cout << "a+b =" << add(3, 4) << endl;
 
 	cv::Mat img_1 = cv::imread(argv[1]);
 	cv::Mat img_2 = cv::imread(argv[2]);
@@ -36,8 +34,9 @@ int main(int argc, char** argv) {
 	int loops = 1; // Numbers of times the algorithm will run again over the already tried-to-fix pictures
 	double final_pic_size = 590.0; //The pic size that will be used for the algorithm
 	double maxDetDiff = 0.15; // or 0.12?? -> The max value of abs(det-1), in other words, the maximum distance avoidable between the calculated Homography maytrix and the Identity
-
-	Mat H = aux->fixPictures(img_1, img_2, loops, final_pic_size, maxDetDiff);
+	int featurePoints = 60;
+	int coreSize = 4;
+	Mat H = aux->fixPictures(img_1, img_2, loops, final_pic_size, maxDetDiff, featurePoints, coreSize);
 
 	aux->displayWindow(img_1, "antiSHake1", true);
 	aux->displayWindow(img_2, "antiShake2", true);
@@ -52,7 +51,6 @@ int main(int argc, char** argv) {
 //	cout << "++++++" << ss.str().c_str() << endl;
 
 	waitKey(0);
-	//TODO
 	return 0;
 }
 

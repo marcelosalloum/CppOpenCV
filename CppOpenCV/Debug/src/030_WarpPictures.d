@@ -67,8 +67,7 @@ src/030_WarpPictures.d src/030_WarpPictures.o:  \
   /opt/local/include/opencv2/imgproc/types_c.h \
   /opt/local/include/opencv2/core/internal.hpp \
   /opt/local/include/opencv2/core/core.hpp ../src/Histogram1D.h \
-  ../src/Layer.h \
-  /Users/marcelosalloum/Projects/CppOpenCV/CppOpenCV/src/lib/LibCpp.hpp
+  ../src/Layer.h
 
 /opt/local/include/opencv2/highgui/highgui.hpp:
 
@@ -211,5 +210,3 @@ src/030_WarpPictures.d src/030_WarpPictures.o:  \
 ../src/Histogram1D.h:
 
 ../src/Layer.h:
-
-/Users/marcelosalloum/Projects/CppOpenCV/CppOpenCV/src/lib/LibCpp.hpp:

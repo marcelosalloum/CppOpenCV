@@ -17,7 +17,7 @@ class AntiShake {
 public:
 	void meanMaxMin(Mat &image, double &max, double &minimal, double &mean);
 	cv::Mat antiShake(Mat &img_1, Mat &img_2, int matches_type, int numberOfMatches, int ffd);
-	cv::Mat fixPictures(Mat &img_1, Mat &img_2, int loops, double final_pic_size, double masDetDiff);
+	cv::Mat fixPictures(Mat &img_1, Mat &img_2, int loops, double final_pic_size, double masDetDiff, int featurePoints, int coreSize);
 	static AntiShake *getInstance(); 				// Singleton Pattern
 	static void displayWindow(Mat image, string fileName, bool mightSave);
 	static void displayWindow(Mat image, string filename);
@@ -34,7 +34,7 @@ private:
 	cv::Mat cropImageBlackFrame(cv::Mat &img);
 	static AntiShake *instance;						// Singleton Pattern
 	void applyHomography(Mat &homography, Mat &img_1, Mat &img_2);
-	cv::Mat getHomographyFeedbackController(Mat &img_1, Mat &img_2, int loops, double final_pic_size);
+	cv::Mat calcHomographyFeedbackController(Mat &img_1, Mat &img_2, int loops, double final_pic_size, int featurePoints, int coreSize);
 	cv::Mat getHomography(std::vector<Point2f> &pts1, std::vector<Point2f> &pts2,
 			std::vector<uchar> &inliers, bool validate);
 	// FILTER MATCHED POINTS:
