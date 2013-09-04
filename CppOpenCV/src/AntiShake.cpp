@@ -32,9 +32,10 @@ AntiShake *AntiShake::getInstance() {
 }
 
 cv::Mat AntiShake::fixPictures(Mat &img_1, Mat &img_2, int loops, double final_pic_size,
-		double maxDetDiff, int featurePoints, int coreSize) {
+		double maxDetDiff, int featurePoints, int coreSize, double absoluteRelation) {
 	// Firstly we calculate the Homography matrix and refine it in the FeedbackController function:
-	Mat H = calcHomographyFeedbackController(img_1, img_2, loops, final_pic_size, featurePoints, coreSize);
+	Mat H = calcHomographyFeedbackController(img_1, img_2, loops, final_pic_size, featurePoints,
+			coreSize, absoluteRelation);
 	double det = determinant(H);
 	cout << "STEP 11 final homography = " << endl << H << endl << " determinant = " << det << endl;
 
@@ -81,7 +82,7 @@ void AntiShake::applyHomography(Mat &homography, Mat &img_1, Mat &img_2) {
  * If it runs the function more than the maxLoop value or if the accuracy measure
  * starts to increase, the loop stops*/
 cv::Mat AntiShake::calcHomographyFeedbackController(Mat &img_1, Mat &img_2, int loops,
-		double final_pic_size, int featurePoints, int coreSize) {
+		double final_pic_size, int featurePoints, int coreSize, double absoluteRelation) {
 	// STEP 0: RE-ESCALE, SO THE BIGGEST RESOLUTION IS 590x(something <= 590)
 	Mat workImage1, workImage2;
 	double scale = 1.0 / (MAX(img_1.rows,img_1.cols) / final_pic_size);
@@ -102,7 +103,7 @@ cv::Mat AntiShake::calcHomographyFeedbackController(Mat &img_1, Mat &img_2, int 
 			//TODO EXTERNALIZE VARIABLES:
 			int matchesType = MATCHES_MEAN_DIST;
 			//pixels:
-			homography = antiShake(workImage1, workImage2, matchesType, featurePoints, coreSize); // exceptions could appear here... //STEPS 1 to 8 there.
+			homography = antiShake(workImage1, workImage2, matchesType, featurePoints, coreSize, absoluteRelation); // exceptions could appear here... //STEPS 1 to 8 there.
 			double det = determinant(homography);
 			Mat eigen;
 			cv::eigen(homography, eigen);
@@ -195,7 +196,7 @@ void AntiShake::reduceDifferences(Mat &img_1, Mat &img_2, Mat &workImage1, Mat &
 }
 
 // Detect keypoints and find
-cv::Mat AntiShake::antiShake(Mat &img_1, Mat &img_2, int matches_type, int numberOfMatches, int corePx) {
+cv::Mat AntiShake::antiShake(Mat &img_1, Mat &img_2, int matches_type, int featurePoints, int corePx, double absoluteRelation) {
 
 	Mat workImage1, workImage2;
 	reduceDifferences(img_1, img_2, workImage1, workImage2, 7, 7); // STEPS 1 to 4 here
@@ -221,14 +222,14 @@ cv::Mat AntiShake::antiShake(Mat &img_1, Mat &img_2, int matches_type, int numbe
 	vector<DMatch> good_matches;
 	std::vector<Point2f> pts1, pts2;
 
-	this->getBestMatches(matches_type, numberOfMatches, good_matches, pts1, pts2, descriptors_1,
-			descriptors_2, keypoints_1, keypoints_2, workImage1.rows, workImage1.cols);
+	this->getBestMatches(matches_type, featurePoints, good_matches, pts1, pts2, descriptors_1,
+			descriptors_2, keypoints_1, keypoints_2, workImage1.rows, workImage1.cols, absoluteRelation);
 	Mat img_matches;
 	drawMatches(workImage1, keypoints_1, workImage2, keypoints_2, good_matches, img_matches,
 			Scalar::all(-1), Scalar::all(-1), vector<char>(), DrawMatchesFlags::NOT_DRAW_SINGLE_POINTS);
 	if (shouldPrint)
 		displayWindow(img_matches, "MATCHES");
-	cout << "==== STEP 7 complete: finished matching descriptors: " << numberOfMatches << endl;
+	cout << "==== STEP 7 complete: finished matching descriptors: " << featurePoints << endl;
 
 	// STEP 8: Find Homography:
 	vector<uchar> inliers(pts1.size(), 0);
@@ -245,7 +246,7 @@ cv::Mat AntiShake::getHomography(std::vector<Point2f> &pts1, std::vector<Point2f
 
 	if (validate) {
 		//Checks if some of the values are too out of normal. If so, sets matrix to Identity
-		if (abs(HReference.at<double>(2, 0) > 0.0002) || abs(HReference.at<double>(2, 1) > 0.0002)){
+		if (abs(HReference.at<double>(2, 0) > 0.0002) || abs(HReference.at<double>(2, 1) > 0.0002)) {
 			cout << "IDENTITY 2" << "Identity matrix set in AntiShake::getHomography" << endl;
 			HReference = (Mat_<double>(3, 3) << 1, 0, 0, 0, 1, 0, 0, 0, 1);
 		} else if (abs(determinant(HReference) - 1) >= maxDetDiff) {
@@ -378,7 +379,7 @@ void AntiShake::cvShowManyImages(char* title, int nArgs, ...) {
 //CALL DIFFERENT ALGORITHMS:
 void AntiShake::getBestMatches(int method, int nthNumber, std::vector<DMatch> &matches,
 		vector<Point2f> &pts1, vector<Point2f> &pts2, Mat descriptors_1, Mat descriptors_2,
-		vector<KeyPoint> keypoints_1, vector<KeyPoint> keypoints_2, int img_y, int img_x) {
+		vector<KeyPoint> keypoints_1, vector<KeyPoint> keypoints_2, int img_y, int img_x, double absoluteRelation) {
 
 	// -- STEP A: Matching descriptor vectors using BruteForceMatcher
 	BFMatcher matcher(NORM_L1, true);
@@ -387,25 +388,25 @@ void AntiShake::getBestMatches(int method, int nthNumber, std::vector<DMatch> &m
 
 	switch (method) {
 	case MATCHES_MEAN_DIST:
-		meanDistancesMatches(nthNumber, matches, keypoints_1, keypoints_2);
+		meanDistancesMatches(nthNumber, matches, keypoints_1, keypoints_2, absoluteRelation);
 		break;
 	case MATCHES_QUADRANTS:
-		meanDistancesMatches(0, matches, keypoints_1, keypoints_2);
+		meanDistancesMatches(0, matches, keypoints_1, keypoints_2, absoluteRelation);
 		quadrantMethod(nthNumber, matches, keypoints_1, keypoints_2, img_y / 2, img_x / 2,
 				MATCHES_QUADRANTS, 0);
 		break;
 	case MATCHES_QUAD_PERIFERY:
-		meanDistancesMatches(0, matches, keypoints_1, keypoints_2);
+		meanDistancesMatches(0, matches, keypoints_1, keypoints_2, absoluteRelation);
 		quadrantMethod(nthNumber, matches, keypoints_1, keypoints_2, img_y / 2, img_x / 2,
 				MATCHES_QUAD_PERIFERY, 0.1);
 		break;
 	case MATCHES_QUAD_CENTER:
-		meanDistancesMatches(0, matches, keypoints_1, keypoints_2);
+		meanDistancesMatches(0, matches, keypoints_1, keypoints_2, absoluteRelation);
 		quadrantMethod(nthNumber, matches, keypoints_1, keypoints_2, img_y / 2, img_x / 2,
 				MATCHES_QUAD_CENTER, 0.4);
 		break;
 	case MATCHES_QUAD_DEFAULT:
-		meanDistancesMatches(0, matches, keypoints_1, keypoints_2);
+		meanDistancesMatches(0, matches, keypoints_1, keypoints_2, absoluteRelation);
 		centerPoints.insert(centerPoints.end(), matches.begin(), matches.end());
 		periferyPoints.insert(periferyPoints.end(), matches.begin(), matches.end());
 		quadrantMethod(nthNumber / 2, centerPoints, keypoints_1, keypoints_2, img_y / 2, img_x / 2,
@@ -541,7 +542,7 @@ void AntiShake::filterElements(std::vector<DMatch> &matches, int nthNumber) {
  * Filters all points by the meanDistance between the pts1 and pts2
  * */
 void AntiShake::meanDistancesMatches(int nthNumber, std::vector<DMatch> &matches,
-		vector<KeyPoint> keypoints_1, vector<KeyPoint> keypoints_2) {
+		vector<KeyPoint> keypoints_1, vector<KeyPoint> keypoints_2, double absoluteRelation) {
 
 	//-- STEP A: Finds mean distance
 	double meanDistance = 0;
@@ -552,34 +553,40 @@ void AntiShake::meanDistancesMatches(int nthNumber, std::vector<DMatch> &matches
 		meanDistance += dist;
 	}
 	meanDistance = meanDistance / matches.size();
+
 // todo
 //	steb B: filters the points by mean Distance
 	std::vector<DMatch> new_matches;
 	Point2f *p1, *p2;
+	int deltaX, deltaY;
+	int sumX = 0;
+	int sumY = 0;
+	double meanX, meanY;
 	double dist;
 	for (unsigned int i = 0; i < matches.size(); i++) {
 		*p1 = keypoints_1[matches[i].queryIdx].pt;
 		*p2 = keypoints_2[matches[i].trainIdx].pt;
 		dist = sqrt(pow((p1->x - p2->x), 2) + pow((p1->y - p2->y), 2));
-		if (dist <= 0.4 * meanDistance) {
-			new_matches.push_back(matches[i]);
-		}
-	}
 
-	// STEP C: if number of points is too low, filters again using a more loose filter
-	if (new_matches.size() <= 30) {
-		new_matches.clear();
-		for (unsigned int i = 0; i < matches.size(); i++) {
-			*p1 = keypoints_1[matches[i].queryIdx].pt;
-			*p2 = keypoints_2[matches[i].trainIdx].pt;
-			dist = sqrt(pow((p1->x - p2->x), 2) + pow((p1->y - p2->y), 2));
-			if (dist <= meanDistance) {
+		if (dist <= meanDistance) {
+			deltaX = abs(p1->x - p2->x);
+			deltaY = abs(p1->y - p2->y);
+			sumX += deltaX;
+			sumY += deltaY;
+
+			meanX = sumX / (i + 1.0);
+			meanY = sumY / (i + 1.0);
+			cout << "deltaX = " << deltaX << endl;
+			cout << "meanX = " << meanX << endl;
+			cout << "deltaX/meanX = " << deltaX / meanX << endl<< endl;
+			if ((abs(deltaX/meanX - 1) < absoluteRelation) && (abs(deltaY/meanY - 1) < absoluteRelation)){
 				new_matches.push_back(matches[i]);
 			}
 		}
+
 	}
 
-	if (nthNumber != 0) {
+	if (nthNumber != 0  &&  nthNumber < (int)new_matches.size()) {
 		//-- STEP B: gets just the first N matches with the smaller value for distance (N=nthNumber)
 		filterElements(new_matches, nthNumber);
 	}

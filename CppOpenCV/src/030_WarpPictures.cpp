@@ -36,7 +36,8 @@ int main(int argc, char** argv) {
 	double maxDetDiff = 0.15; // or 0.12?? -> The max value of abs(det-1), in other words, the maximum distance avoidable between the calculated Homography maytrix and the Identity
 	int featurePoints = 60;
 	int coreSize = 4;
-	Mat H = aux->fixPictures(img_1, img_2, loops, final_pic_size, maxDetDiff, featurePoints, coreSize);
+	double absoluteRelation = 0.9;
+	Mat H = aux->fixPictures(img_1, img_2, loops, final_pic_size, maxDetDiff, featurePoints, coreSize, absoluteRelation);
 
 	aux->displayWindow(img_1, "antiSHake1", true);
 	aux->displayWindow(img_2, "antiShake2", true);
