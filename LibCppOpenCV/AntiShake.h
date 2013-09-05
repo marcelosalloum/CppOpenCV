@@ -10,7 +10,12 @@
 
 #include <stdio.h>
 #include <cv.h>
-#include "/opt/local/include/opencv2/opencv.hpp"
+
+#define MATCHES_MEAN_DIST 0
+#define MATCHES_QUADRANTS 1
+#define MATCHES_QUAD_PERIFERY 2
+#define MATCHES_QUAD_CENTER 3
+#define MATCHES_QUAD_DEFAULT 4
 
 using namespace cv;
 using namespace std;
@@ -18,42 +23,46 @@ using namespace std;
 class AntiShake {
 public:
 	void meanMaxMin(Mat &image, double &max, double &minimal, double &mean);
-	cv::Mat antiShake(Mat &img_1, Mat &img_2, int matches_type, int numberOfMatches);
-	cv::Mat fixPictures(Mat &img_1, Mat &img_2, int loops);
+	cv::Mat antiShake(Mat &img_1, Mat &img_2, int matches_type, int numberOfMatches, int ffd,
+			double absoluteRelation);
+	cv::Mat fixPictures(Mat &img_1, Mat &img_2, int loops, double final_pic_size, double masDetDiff,
+			int featurePoints, int coreSize, double absoluteRelation, int matches_type = 0);
 	static AntiShake *getInstance(); 				// Singleton Pattern
 	static void displayWindow(Mat image, string fileName, bool mightSave);
 	static void displayWindow(Mat image, string filename);
 	static void readme(string info);
+	Mat BorderDetector(Mat src, int type);
+	void cvShowManyImages(char* title, int nArgs, ...);
+	void reduceDifferences(Mat &img_1, Mat &img_2, Mat &workImage1, Mat &workImage2, int blur1,
+			int blur2);
 	virtual ~AntiShake();
 private:
 	cv::Mat eye3x3;
+	bool shouldPrint;
+	double maxDetDiff;
 	cv::Mat cropImageBlackFrame(cv::Mat &img);
 	static AntiShake *instance;						// Singleton Pattern
 	void applyHomography(Mat &homography, Mat &img_1, Mat &img_2);
-	cv::Mat getHomographyFeedbackController(Mat &img_1, Mat &img_2, int loops);
-	cv::Mat getHomography(std::vector<Point2f> &pts1,
-			std::vector<Point2f> &pts2, std::vector<uchar> &inliers,
-			int &index);
+	cv::Mat calcHomographyFeedbackController(Mat &img_1, Mat &img_2, int loops, double final_pic_size,
+			int featurePoints, int coreSize, double absoluteRelation, int matches_type = 0);
+	cv::Mat validateHomography(std::vector<Point2f> &pts1, std::vector<Point2f> &pts2,
+			std::vector<uchar> &inliers, bool validate = true);
 	// FILTER MATCHED POINTS:
-	void getBestMatches(int method, int nthNumber, std::vector<DMatch> &matches,
-			vector<Point2f> &pts1, vector<Point2f> &pts2, Mat descriptors_1,
-			Mat descriptors_2, vector<KeyPoint> keypoints_1,
-			vector<KeyPoint> keypoints_2, int img_y, int img_x);
-	void meanDistancesMatches(int nthNumber, std::vector<DMatch> &matches,
-			vector<KeyPoint> keypoints_1, vector<KeyPoint> keypoints_2);
-	void quadrantMethod(int nthNumber, std::vector<DMatch> &matches,
-			vector<KeyPoint> keypoints_1, vector<KeyPoint> keypoints_2, int Y,
-			int X,int quad_type,double centerEdgeLimit);
+	void getBestMatches(int method, int nthNumber, std::vector<DMatch> &matches, vector<Point2f> &pts1,
+			vector<Point2f> &pts2, Mat descriptors_1, Mat descriptors_2, vector<KeyPoint> keypoints_1,
+			vector<KeyPoint> keypoints_2, int img_y, int img_x, double absoluteRelation);
+	void meanDistancesMatches(int nthNumber, std::vector<DMatch> &matches, vector<KeyPoint> keypoints_1,
+			vector<KeyPoint> keypoints_2, double absoluteRelation);
+	void quadrantMethod(int nthNumber, std::vector<DMatch> &matches, vector<KeyPoint> keypoints_1,
+			vector<KeyPoint> keypoints_2, int Y, int X, int quad_type, double centerEdgeLimit);
 	void filterElements(std::vector<DMatch> &matches, int nthNumber);
 	// COMPENSATE DIFFERENCES BETWEEN THE PICTURES:
-	void reduceDifferences(Mat &img_1, Mat &img_2, Mat &workImage1,
-			Mat &workImage2);
 	void compensateBrightness(Mat &src1, Mat &src2, Mat &output1, Mat &output2);
-	void compensateBlurriness(Mat &src, Mat &output, int oddNumber);
+	void compensateBlurriness(Mat &src, Mat &output, int kernelSize);
 	void sobelOperator(Mat &src, Mat &output, int scale, int delta);
 
 protected:
-	AntiShake(); 								// Singleton Pattern
+	AntiShake(bool shouldPrint, double maxDetDiff); 								// Singleton Pattern
 };
 
 #endif /* ANTISHAKE_H_ */

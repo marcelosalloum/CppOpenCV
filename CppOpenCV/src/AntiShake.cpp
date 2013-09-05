@@ -11,12 +11,6 @@
 #include "opencv2/highgui/highgui.hpp"
 #include "opencv2/nonfree/features2d.hpp"
 
-#define MATCHES_MEAN_DIST 0
-#define MATCHES_QUADRANTS 1
-#define MATCHES_QUAD_PERIFERY 2
-#define MATCHES_QUAD_CENTER 3
-#define MATCHES_QUAD_DEFAULT 4
-
 // Singleton pattern:
 AntiShake *AntiShake::instance;
 AntiShake::AntiShake(bool shouldPrint = true, double maxDetDiff = 0.15) {
@@ -32,10 +26,10 @@ AntiShake *AntiShake::getInstance() {
 }
 
 cv::Mat AntiShake::fixPictures(Mat &img_1, Mat &img_2, int loops, double final_pic_size,
-		double maxDetDiff, int featurePoints, int coreSize, double absoluteRelation) {
+		double maxDetDiff, int featurePoints, int coreSize, double absoluteRelation, int matches_type) {
 	// Firstly we calculate the Homography matrix and refine it in the FeedbackController function:
-	Mat H = calcHomographyFeedbackController(img_1, img_2, loops, final_pic_size, featurePoints,
-			coreSize, absoluteRelation);
+	Mat H = calcHomographyFeedbackController(img_1, img_2, loops, final_pic_size, featurePoints, coreSize,
+			absoluteRelation, matches_type);
 	double det = determinant(H);
 	cout << "STEP 11 final homography = " << endl << H << endl << " determinant = " << det << endl;
 
@@ -82,7 +76,8 @@ void AntiShake::applyHomography(Mat &homography, Mat &img_1, Mat &img_2) {
  * If it runs the function more than the maxLoop value or if the accuracy measure
  * starts to increase, the loop stops*/
 cv::Mat AntiShake::calcHomographyFeedbackController(Mat &img_1, Mat &img_2, int loops,
-		double final_pic_size, int featurePoints, int coreSize, double absoluteRelation) {
+		double final_pic_size, int featurePoints, int coreSize, double absoluteRelation,
+		int matches_type) {
 	// STEP 0: RE-ESCALE, SO THE BIGGEST RESOLUTION IS 590x(something <= 590)
 	Mat workImage1, workImage2;
 	double scale = 1.0 / (MAX(img_1.rows,img_1.cols) / final_pic_size);
@@ -100,10 +95,9 @@ cv::Mat AntiShake::calcHomographyFeedbackController(Mat &img_1, Mat &img_2, int 
 	do {
 		loopCounter++;
 		try {
-			//TODO EXTERNALIZE VARIABLES:
-			int matchesType = MATCHES_MEAN_DIST;
 			//pixels:
-			homography = antiShake(workImage1, workImage2, matchesType, featurePoints, coreSize, absoluteRelation); // exceptions could appear here... //STEPS 1 to 8 there.
+			homography = antiShake(workImage1, workImage2, matches_type, featurePoints, coreSize,
+					absoluteRelation); // exceptions could appear here... //STEPS 1 to 8 there.
 			double det = determinant(homography);
 			Mat eigen;
 			cv::eigen(homography, eigen);
@@ -196,7 +190,8 @@ void AntiShake::reduceDifferences(Mat &img_1, Mat &img_2, Mat &workImage1, Mat &
 }
 
 // Detect keypoints and find
-cv::Mat AntiShake::antiShake(Mat &img_1, Mat &img_2, int matches_type, int featurePoints, int corePx, double absoluteRelation) {
+cv::Mat AntiShake::antiShake(Mat &img_1, Mat &img_2, int matches_type, int featurePoints, int corePx,
+		double absoluteRelation) {
 
 	Mat workImage1, workImage2;
 	reduceDifferences(img_1, img_2, workImage1, workImage2, 7, 7); // STEPS 1 to 4 here
@@ -233,24 +228,24 @@ cv::Mat AntiShake::antiShake(Mat &img_1, Mat &img_2, int matches_type, int featu
 
 	// STEP 8: Find Homography:
 	vector<uchar> inliers(pts1.size(), 0);
-	Mat homography = getHomography(pts1, pts2, inliers, true);
+	Mat homography = validateHomography(pts1, pts2, inliers, true);
 	cout << "==== STEP 8 complete: finished calculating right homographY." << endl;
 
 	return homography;
 }
 
 // Calculates homography and validates it if the flag is properly set
-cv::Mat AntiShake::getHomography(std::vector<Point2f> &pts1, std::vector<Point2f> &pts2,
+cv::Mat AntiShake::validateHomography(std::vector<Point2f> &pts1, std::vector<Point2f> &pts2,
 		std::vector<uchar> &inliers, bool validate) {
 	Mat HReference = findHomography(Mat(pts1), Mat(pts2), inliers, CV_RANSAC, 1);
-
 	if (validate) {
 		//Checks if some of the values are too out of normal. If so, sets matrix to Identity
-		if (abs(HReference.at<double>(2, 0) > 0.0002) || abs(HReference.at<double>(2, 1) > 0.0002)) {
-			cout << "IDENTITY 2" << "Identity matrix set in AntiShake::getHomography" << endl;
+		if (abs(HReference.at<double>(2, 0) > 0.0002) || abs(HReference.at<double>(2, 1) > 0.0002)
+				|| abs(HReference.at<double>(0, 1) > 0.02) || abs(HReference.at<double>(1, 0)) > 0.02) {
+			cout << "changed to IDENTITY (2) " << endl << HReference << endl;
 			HReference = (Mat_<double>(3, 3) << 1, 0, 0, 0, 1, 0, 0, 0, 1);
-		} else if (abs(determinant(HReference) - 1) >= maxDetDiff) {
-			cout << "IDENTITY 3" << endl;
+		} else if (abs(determinant(HReference) - 1.0) >= maxDetDiff) {
+			cout << "changed to IDENTITY (3) " << endl << HReference << endl;
 			HReference = (Mat_<double>(3, 3) << 1, 0, 0, 0, 1, 0, 0, 0, 1);
 		}
 	}
@@ -377,41 +372,42 @@ void AntiShake::cvShowManyImages(char* title, int nArgs, ...) {
 }
 
 //CALL DIFFERENT ALGORITHMS:
-void AntiShake::getBestMatches(int method, int nthNumber, std::vector<DMatch> &matches,
+void AntiShake::getBestMatches(int matches_type, int nthNumber, std::vector<DMatch> &matches,
 		vector<Point2f> &pts1, vector<Point2f> &pts2, Mat descriptors_1, Mat descriptors_2,
-		vector<KeyPoint> keypoints_1, vector<KeyPoint> keypoints_2, int img_y, int img_x, double absoluteRelation) {
+		vector<KeyPoint> keypoints_1, vector<KeyPoint> keypoints_2, int height, int width,
+		double absoluteRelation) {
 
 	// -- STEP A: Matching descriptor vectors using BruteForceMatcher
 	BFMatcher matcher(NORM_L1, true);
 	matcher.match(descriptors_1, descriptors_2, matches);
 	vector<DMatch> centerPoints, periferyPoints;
-
-	switch (method) {
+// TODO
+	switch (matches_type) {
 	case MATCHES_MEAN_DIST:
 		meanDistancesMatches(nthNumber, matches, keypoints_1, keypoints_2, absoluteRelation);
 		break;
 	case MATCHES_QUADRANTS:
 		meanDistancesMatches(0, matches, keypoints_1, keypoints_2, absoluteRelation);
-		quadrantMethod(nthNumber, matches, keypoints_1, keypoints_2, img_y / 2, img_x / 2,
+		quadrantMethod(nthNumber, matches, keypoints_1, keypoints_2, height / 2, width / 2,
 				MATCHES_QUADRANTS, 0);
 		break;
 	case MATCHES_QUAD_PERIFERY:
 		meanDistancesMatches(0, matches, keypoints_1, keypoints_2, absoluteRelation);
-		quadrantMethod(nthNumber, matches, keypoints_1, keypoints_2, img_y / 2, img_x / 2,
-				MATCHES_QUAD_PERIFERY, 0.1);
+		quadrantMethod(nthNumber, matches, keypoints_1, keypoints_2, height / 2, width / 2,
+				MATCHES_QUAD_PERIFERY, 0.7);
 		break;
 	case MATCHES_QUAD_CENTER:
 		meanDistancesMatches(0, matches, keypoints_1, keypoints_2, absoluteRelation);
-		quadrantMethod(nthNumber, matches, keypoints_1, keypoints_2, img_y / 2, img_x / 2,
+		quadrantMethod(nthNumber, matches, keypoints_1, keypoints_2, height / 2, width / 2,
 				MATCHES_QUAD_CENTER, 0.4);
 		break;
 	case MATCHES_QUAD_DEFAULT:
 		meanDistancesMatches(0, matches, keypoints_1, keypoints_2, absoluteRelation);
 		centerPoints.insert(centerPoints.end(), matches.begin(), matches.end());
 		periferyPoints.insert(periferyPoints.end(), matches.begin(), matches.end());
-		quadrantMethod(nthNumber / 2, centerPoints, keypoints_1, keypoints_2, img_y / 2, img_x / 2,
+		quadrantMethod(nthNumber / 2, centerPoints, keypoints_1, keypoints_2, height / 2, width / 2,
 				MATCHES_QUAD_CENTER, 0.4);
-		quadrantMethod(nthNumber, periferyPoints, keypoints_1, keypoints_2, img_y / 2, img_x / 2,
+		quadrantMethod(nthNumber, periferyPoints, keypoints_1, keypoints_2, height / 2, width / 2,
 				MATCHES_QUAD_PERIFERY, 0.4);
 		matches = periferyPoints;
 		matches.insert(matches.end(), centerPoints.begin(), centerPoints.end());
@@ -419,6 +415,8 @@ void AntiShake::getBestMatches(int method, int nthNumber, std::vector<DMatch> &m
 	default:
 		break;
 	}
+
+	cout << "matches_type: " << matches_type << endl;
 
 	// Lets now populate the pts1 and pts2 vector
 	for (unsigned int index = 0; index < matches.size(); ++index) {
@@ -428,21 +426,25 @@ void AntiShake::getBestMatches(int method, int nthNumber, std::vector<DMatch> &m
 }
 
 void AntiShake::quadrantMethod(int nthNumber, std::vector<DMatch> &matches, vector<KeyPoint> keypoints_1,
-		vector<KeyPoint> keypoints_2, int Y, int X, int quad_type, double centerEdgeLimit) {
-	/* quad2  |  quad1
-	 * _______________
+		vector<KeyPoint> keypoints_2, int Yc, int Xc, int quad_type, double centerEdgeLimit) {
+	/*
+	 * quad2  |  quad1
+	 * ____(Xc,Yc)_____
 	 * quad3  |  quad4
 	 * */
+	cout << "Xc + Xc * centerEdgeLimit = " << Xc + Xc * centerEdgeLimit << endl;
+	cout << "Yc - Yc * centerEdgeLimit = " << Yc - Yc * centerEdgeLimit << endl;
 	std::vector<DMatch> quad1, quad2, quad3, quad4;
-	//-- STEP ?: Lets separate wach point per quadrant
+	//-- STEP 1: Lets separate each point accoding to its quadrant
 	for (unsigned int i = 0; i < matches.size(); i++) {
 		Point2f p1 = keypoints_1[matches[i].queryIdx].pt;
 		Point2f p2 = keypoints_2[matches[i].trainIdx].pt;
 
-		if ((p1.x > X) && (p2.x > X) && (p1.y < Y) && (p2.y < Y)) {
+		// Start Quadrant 1:
+		if ((p1.x > Xc) && (p2.x > Xc) && (p1.y < Yc) && (p2.y < Yc)) {
 			if (quad_type == MATCHES_QUADRANTS) {
 				quad1.push_back(matches[i]);
-			} else if ((p1.y < Y - Y * centerEdgeLimit) || (p1.x > X + X * centerEdgeLimit)) {
+			} else if ((p1.y < Yc - Yc * centerEdgeLimit) || (p1.x > Xc + Xc * centerEdgeLimit)) {
 				if (quad_type == MATCHES_QUAD_PERIFERY) {
 					quad1.push_back(matches[i]);
 				}
@@ -451,11 +453,11 @@ void AntiShake::quadrantMethod(int nthNumber, std::vector<DMatch> &matches, vect
 					quad1.push_back(matches[i]);
 				}
 			}
-
-		} else if ((p1.x < X) && (p2.x < X) && (p1.y < Y) && (p2.y < Y)) {
+			// Start Quadrant 2:
+		} else if ((p1.x < Xc) && (p2.x < Xc) && (p1.y < Yc) && (p2.y < Yc)) {
 			if (quad_type == MATCHES_QUADRANTS) {
 				quad2.push_back(matches[i]);
-			} else if ((p1.y < Y - Y * centerEdgeLimit) || (p1.x < X - X * centerEdgeLimit)) {
+			} else if ((p1.y < Yc - Yc * centerEdgeLimit) || (p1.x < Xc - Xc * centerEdgeLimit)) {
 				if (quad_type == MATCHES_QUAD_PERIFERY) {
 					quad2.push_back(matches[i]);
 				}
@@ -464,10 +466,11 @@ void AntiShake::quadrantMethod(int nthNumber, std::vector<DMatch> &matches, vect
 					quad2.push_back(matches[i]);
 				}
 			}
-		} else if ((p1.x < X) && (p2.x < X) && (p1.y > Y) && (p2.y > Y)) {
+			// Start Quadrant 3:
+		} else if ((p1.x < Xc) && (p2.x < Xc) && (p1.y > Yc) && (p2.y > Yc)) {
 			if (quad_type == MATCHES_QUADRANTS) {
 				quad3.push_back(matches[i]);
-			} else if ((p1.y > Y + Y * centerEdgeLimit) || (p1.x < X - X * centerEdgeLimit)) {
+			} else if ((p1.y > Yc + Yc * centerEdgeLimit) || (p1.x < Xc - Xc * centerEdgeLimit)) {
 				if (quad_type == MATCHES_QUAD_PERIFERY) {
 					quad3.push_back(matches[i]);
 				}
@@ -476,10 +479,11 @@ void AntiShake::quadrantMethod(int nthNumber, std::vector<DMatch> &matches, vect
 					quad3.push_back(matches[i]);
 				}
 			}
-		} else if ((p1.x > X) && (p2.x > X) && (p1.y > Y) && (p2.y > Y)) {
+			// Start Quadrant 4:
+		} else if ((p1.x > Xc) && (p2.x > Xc) && (p1.y > Yc) && (p2.y > Yc)) {
 			if (MATCHES_QUADRANTS) {
 				quad4.push_back(matches[i]);
-			} else if ((p1.y > Y + Y * centerEdgeLimit) || (p1.x > X + X * centerEdgeLimit)) {
+			} else if ((p1.y > Yc + Yc * centerEdgeLimit) || (p1.x > Xc + Xc * centerEdgeLimit)) {
 				if (quad_type == MATCHES_QUAD_PERIFERY) {
 					quad4.push_back(matches[i]);
 				}
@@ -491,28 +495,29 @@ void AntiShake::quadrantMethod(int nthNumber, std::vector<DMatch> &matches, vect
 		}
 	}
 
-	int minSize = min(min(quad1.size(), quad2.size()), min(quad3.size(), quad4.size()));
+////	Choose points from each quadrant
+//	int minSize = min(min(quad1.size(), quad2.size()), min(quad3.size(), quad4.size()));
 	vector<vector<DMatch> > allQuads;
-	if (minSize == 0) {
-		if (!quad1.empty())
-			allQuads.push_back(quad1);
-		if (!quad2.empty())
-			allQuads.push_back(quad2);
-		if (!quad3.empty())
-			allQuads.push_back(quad3);
-		if (!quad4.empty())
-			allQuads.push_back(quad4);
-
-		if (allQuads.empty() || allQuads.size() < 3) {
-			cout << " ==== ERROR, less than 3 quadrants contain points" << endl;
-		} else {
-			cout << " ==== Number of good quadrants: " << allQuads.size() << " of 4" << endl;
-		}
-	} else if (minSize >= nthNumber) {
-		minSize = nthNumber; // increasing this number makes the algorithm go slower. So it shouldn't be very big
-	}
-
-	// if minSize wasn't null, the allQuads will be empty, so we populate it
+//	if (minSize == 0) {
+//		if (!quad1.empty())
+//			allQuads.push_back(quad1);
+//		if (!quad2.empty())
+//			allQuads.push_back(quad2);
+//		if (!quad3.empty())
+//			allQuads.push_back(quad3);
+//		if (!quad4.empty())
+//			allQuads.push_back(quad4);
+//
+//		if (allQuads.empty() || allQuads.size() < 3) {
+//			cout << " ==== ERROR, less than 3 quadrants contain points" << endl;
+//		} else {
+//			cout << " ==== Number of good quadrants: " << allQuads.size() << " of 4" << endl;
+//		}
+//	} else if (minSize >= nthNumber) {
+//		minSize = nthNumber; // increasing this number makes the algorithm go slower. So it shouldn't be very big
+//	}
+//
+//	// if minSize wasn't null, the allQuads will be empty, so we populate it
 	if (allQuads.empty()) {
 		allQuads.push_back(quad1);
 		allQuads.push_back(quad2);
@@ -520,14 +525,16 @@ void AntiShake::quadrantMethod(int nthNumber, std::vector<DMatch> &matches, vect
 		allQuads.push_back(quad4);
 	}
 
-	// Getting the best matches for each vector and unifying them into the unique allPoints vector
 	vector<DMatch> allPoints;
+	// Iterates over Quadrants: Getting the best matches for each vector and unifying them into the unique allPoints vector
 	for (unsigned int index = 0; index < allQuads.size(); ++index) {
 		vector<DMatch> quad = allQuads[index];
-		filterElements(quad, minSize);			// Gets the best matches
-		allPoints.insert(allPoints.end(), quad.begin(), quad.end()); // append the vectors together
+		int size = (int) (((int) quad.size()) * 0.2);
+		if (size > 0) {
+			filterElements(quad, size);			// Gets the best matches
+			allPoints.insert(allPoints.end(), quad.begin(), quad.end()); // append the vectors together
+		}
 	}
-
 	matches = allPoints;
 }
 
@@ -544,49 +551,47 @@ void AntiShake::filterElements(std::vector<DMatch> &matches, int nthNumber) {
 void AntiShake::meanDistancesMatches(int nthNumber, std::vector<DMatch> &matches,
 		vector<KeyPoint> keypoints_1, vector<KeyPoint> keypoints_2, double absoluteRelation) {
 
-	//-- STEP A: Finds mean distance
-	double meanDistance = 0;
-	for (unsigned int i = 0; i < matches.size(); i++) {
-		Point2f p1 = keypoints_1[matches[i].queryIdx].pt;
-		Point2f p2 = keypoints_2[matches[i].trainIdx].pt;
-		double dist = sqrt(pow((p1.x - p2.x), 2) + pow((p1.y - p2.y), 2));
-		meanDistance += dist;
-	}
-	meanDistance = meanDistance / matches.size();
+//	//-- STEP A: Finds mean distance
+//	double meanDistance = 0;
+//	for (unsigned int i = 0; i < matches.size(); i++) {
+//		Point2f p1 = keypoints_1[matches[i].queryIdx].pt;
+//		Point2f p2 = keypoints_2[matches[i].trainIdx].pt;
+//		double dist = sqrt(pow((p1.x - p2.x), 2) + pow((p1.y - p2.y), 2));
+//		meanDistance += dist;
+//	}
+//	meanDistance = meanDistance / matches.size();
 
 // todo
 //	steb B: filters the points by mean Distance
 	std::vector<DMatch> new_matches;
 	Point2f *p1, *p2;
 	int deltaX, deltaY;
-	int sumX = 0;
-	int sumY = 0;
-	double meanX, meanY;
-	double dist;
+	int sumX = 5;
+	int sumY = 5;
+	double meanX = 5.0;
+	double meanY = 5.0;
 	for (unsigned int i = 0; i < matches.size(); i++) {
 		*p1 = keypoints_1[matches[i].queryIdx].pt;
 		*p2 = keypoints_2[matches[i].trainIdx].pt;
-		dist = sqrt(pow((p1->x - p2->x), 2) + pow((p1->y - p2->y), 2));
 
-		if (dist <= meanDistance) {
-			deltaX = abs(p1->x - p2->x);
-			deltaY = abs(p1->y - p2->y);
+		deltaX = abs(p1->x - p2->x);
+		deltaY = abs(p1->y - p2->y);
+
+		cout << "deltaX = " << deltaX << endl;
+		cout << "sumX = " << sumX << endl;
+		cout << "meanX = " << meanX << endl;
+		cout << "deltaX/meanX = " << deltaX / meanX << endl << endl;
+		if ((abs(deltaX / meanX - 1) < absoluteRelation)
+				&& (abs(deltaY / meanY - 1) < absoluteRelation)) {
+			new_matches.push_back(matches[i]);
 			sumX += deltaX;
 			sumY += deltaY;
-
-			meanX = sumX / (i + 1.0);
-			meanY = sumY / (i + 1.0);
-			cout << "deltaX = " << deltaX << endl;
-			cout << "meanX = " << meanX << endl;
-			cout << "deltaX/meanX = " << deltaX / meanX << endl<< endl;
-			if ((abs(deltaX/meanX - 1) < absoluteRelation) && (abs(deltaY/meanY - 1) < absoluteRelation)){
-				new_matches.push_back(matches[i]);
-			}
+			meanX = (double) sumX / ((double) new_matches.size());
+			meanY = (double) sumY / ((double) new_matches.size());
 		}
-
 	}
 
-	if (nthNumber != 0  &&  nthNumber < (int)new_matches.size()) {
+	if (nthNumber != 0 && nthNumber < (int) new_matches.size()) {
 		//-- STEP B: gets just the first N matches with the smaller value for distance (N=nthNumber)
 		filterElements(new_matches, nthNumber);
 	}
@@ -744,15 +749,15 @@ void AntiShake::compensateBrightness(Mat &src1, Mat &src2, Mat &output1, Mat &ou
 		darkerPic = &output1;
 		brightRate = brightness2 / brightness1;
 	}
-	brightRate *= 1.5;
+	brightRate *= 2.0;
 	for (int y = 0; y < darkerPic->rows; y++) {
 		for (int x = 0; x < darkerPic->cols; x++) {
 			darkerPic->at<Vec3b>(y, x)[0] = saturate_cast<uchar>(
-					brightRate * (darkerPic->at<Vec3b>(y, x)[0]) + beta);
+					brightRate * (darkerPic->at<Vec3b>(y, x)[0]));
 			darkerPic->at<Vec3b>(y, x)[1] = saturate_cast<uchar>(
-					brightRate * (darkerPic->at<Vec3b>(y, x)[1]) + beta);
+					brightRate * (darkerPic->at<Vec3b>(y, x)[1]));
 			darkerPic->at<Vec3b>(y, x)[2] = saturate_cast<uchar>(
-					brightRate * (darkerPic->at<Vec3b>(y, x)[2]) + beta);
+					brightRate * (darkerPic->at<Vec3b>(y, x)[2]));
 		}
 	}
 

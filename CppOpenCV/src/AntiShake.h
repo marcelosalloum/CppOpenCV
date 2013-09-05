@@ -10,6 +10,13 @@
 
 #include <stdio.h>
 #include <cv.h>
+
+#define MATCHES_MEAN_DIST 0
+#define MATCHES_QUADRANTS 1
+#define MATCHES_QUAD_PERIFERY 2
+#define MATCHES_QUAD_CENTER 3
+#define MATCHES_QUAD_DEFAULT 4
+
 using namespace cv;
 using namespace std;
 
@@ -19,7 +26,7 @@ public:
 	cv::Mat antiShake(Mat &img_1, Mat &img_2, int matches_type, int numberOfMatches, int ffd,
 			double absoluteRelation);
 	cv::Mat fixPictures(Mat &img_1, Mat &img_2, int loops, double final_pic_size, double masDetDiff,
-			int featurePoints, int coreSize, double absoluteRelation);
+			int featurePoints, int coreSize, double absoluteRelation, int matches_type = 0);
 	static AntiShake *getInstance(); 				// Singleton Pattern
 	static void displayWindow(Mat image, string fileName, bool mightSave);
 	static void displayWindow(Mat image, string filename);
@@ -37,9 +44,9 @@ private:
 	static AntiShake *instance;						// Singleton Pattern
 	void applyHomography(Mat &homography, Mat &img_1, Mat &img_2);
 	cv::Mat calcHomographyFeedbackController(Mat &img_1, Mat &img_2, int loops, double final_pic_size,
-			int featurePoints, int coreSize, double absoluteRelation);
-	cv::Mat getHomography(std::vector<Point2f> &pts1, std::vector<Point2f> &pts2,
-			std::vector<uchar> &inliers, bool validate);
+			int featurePoints, int coreSize, double absoluteRelation, int matches_type = 0);
+	cv::Mat validateHomography(std::vector<Point2f> &pts1, std::vector<Point2f> &pts2,
+			std::vector<uchar> &inliers, bool validate = true);
 	// FILTER MATCHED POINTS:
 	void getBestMatches(int method, int nthNumber, std::vector<DMatch> &matches, vector<Point2f> &pts1,
 			vector<Point2f> &pts2, Mat descriptors_1, Mat descriptors_2, vector<KeyPoint> keypoints_1,
