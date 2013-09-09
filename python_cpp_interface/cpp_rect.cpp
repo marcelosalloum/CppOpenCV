@@ -16,28 +16,12 @@ Rectangle::~Rectangle() {
 }
 
 void Rectangle::openCV(char* path1, char* path2){
-	std::cout << "HELLO WORLD" << std::endl;
-	// std::string file_1 = "/Users/marcelosalloum/Projects/CppOpenCV/CppOpenCV/Debug/aux/foot0.jpeg";
-	// std::string file_2 = "/Users/marcelosalloum/Projects/CppOpenCV/CppOpenCV/Debug/aux/foot1.jpeg";
+	antiShake(path1, path2);
+}
 
-	antishake(path1, path2);
-	// cv::Mat img1(7,7,CV_32FC2,Scalar(1,3));
-	// cout << img1.rows<<endl;
-	// cout << add(3,8) <<endl;
-	// AntiShake *aux = new AntiShake();
-// cv::Mat img1 = cv::imread(file_1);
-// 	cv::Mat img2 = cv::imread(file_2);
-// 	
-// AntiShake *aux = AntiShake::getInstance();
-// 	cv::Mat H = aux->fixPictures(img1, img2, 1);
-// 	
-// 	aux->displayWindow(img1, "~/Desktop/fix_1", true);
-// 	aux->displayWindow(img2, "~/Desktop/fix_2", true);
-// 	
-// 	//  ==== storing data ====
-// 	std::stringstream ss;
-// 	ss << H;
-// 	std::cout << "++++++" << ss.str().c_str() << std::endl;
+void Rectangle::normalizeBright(char* path1, char* path2){
+	std::cout << "TEST"<< std::endl;
+	normalizeBrightness(path1, path2);
 }
 
 int Rectangle::getLength() {

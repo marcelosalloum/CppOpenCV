@@ -18,6 +18,7 @@ using namespace cv;
 cv::Mat cropBeta(cv::Mat &img);
 void readme();
 int fetchSharpAreas(int argc, char** argv);
+void normalizeBrightness(std::string path1, std::string path2, double brightRate, string outputName);
 //int oldmain(int argc, char** argv);
 
 /**
@@ -25,37 +26,45 @@ int fetchSharpAreas(int argc, char** argv);
  * @brief Main function
  */
 int main(int argc, char** argv) {
+//	cv::Mat img_1 = cv::imread(argv[1]);
+//	cv::Mat img_2 = cv::imread(argv[2]);
+//
+//	AntiShake *aux = AntiShake::getInstance();
+//	// ----- VARIABLES:
+//	int loops = 1; // Numbers of times the algorithm will run again over the already tried-to-fix pictures
+//	double final_pic_size = 0; //The pic size that will be used for the algorithm
+//	double maxDetDiff = 0.15; // or 0.12?? -> The max value of abs(det-1), in other words, the maximum distance avoidable between the calculated Homography maytrix and the Identity
+//	int featurePoints = 300;
+//	int coreSize = 4;
+//	double absoluteRelation = 2.0;
+//	Mat H = aux->fixPictures(img_1, img_2, loops, final_pic_size, maxDetDiff, featurePoints, coreSize,
+//			absoluteRelation, MATCHES_QUAD_DEFAULT);
+//
+//	imwrite("antiSHake1.jpg", img_1); // Saves the image
+//	imwrite("antiSHake2.jpg", img_2); // Saves the image
 
-	cv::Mat img_1 = cv::imread(argv[1]);
-	cv::Mat img_2 = cv::imread(argv[2]);
 
-	AntiShake *aux = AntiShake::getInstance();
-	// ----- VARIABLES:
-	int loops = 1; // Numbers of times the algorithm will run again over the already tried-to-fix pictures
-	double final_pic_size = 590.0; //The pic size that will be used for the algorithm
-	double maxDetDiff = 0.15; // or 0.12?? -> The max value of abs(det-1), in other words, the maximum distance avoidable between the calculated Homography maytrix and the Identity
-	int featurePoints = 100;
-	int coreSize = 4;
-	double absoluteRelation = 2;
-	Mat H = aux->fixPictures(img_1, img_2, loops, final_pic_size, maxDetDiff, featurePoints, coreSize,
-			absoluteRelation, MATCHES_QUAD_DEFAULT);
 
-	imwrite("antiSHake1.jpg", img_1); // Saves the image
-	imwrite("antiSHake2.jpg", img_2); // Saves the image
-//	aux->displayWindow(img_1, "antiSHake1", true);
-//	aux->displayWindow(img_2, "antiShake2", true);
-
-//	aux->reduceDifferences(img_1, img_2, img_1, img_2, 7, 7);
-
-	//  ==== storing data ====
-//	std::stringstream ss;
-//	ss << H;
-	//	return [NSString stringWithCString:ss.str().c_str() encoding:NSASCIIStringEncoding];
-
-//	cout << "++++++" << ss.str().c_str() << endl;
+	normalizeBrightness(argv[1], argv[2], 1.0, "Teste");
 
 	waitKey(0);
 	return 0;
+}
+
+void normalizeBrightness(std::string path1, std::string path2, double brightRate, string outputName) {
+	cv::Mat src1 = cv::imread(path1);
+	cv::Mat src2 = cv::imread(path2);
+	AntiShake *aux = AntiShake::getInstance();
+	Mat output1, output2;
+	aux->compensateBrightness(src1, src2, output1, output2, brightRate);
+
+	//Saves the Image:
+	string fileName = outputName;
+	fileName.append("_0.jpg");
+	imwrite(fileName, output1);
+	fileName = outputName;
+	fileName.append("_1.jpg");
+	imwrite(fileName, output2);
 }
 
 cv::Mat cropBeta(cv::Mat &img) {

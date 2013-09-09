@@ -6,6 +6,7 @@ cdef extern from "cpp_rect.h":
         int getHeight()
         int getArea()
         void openCV(char* path1, char* path2)
+        void normalizeBright(char* path1, char* path2)
         void move(int dx, int dy)
         c_Rectangle add "operator+"(c_Rectangle right)
     c_Rectangle *new_Rectangle "new Rectangle" (int x0, int y0, int x1, int y1)
@@ -25,6 +26,8 @@ cdef class Rectangle:
         return self.thisptr.getArea()
     def openCV(self, path1, path2):
         self.thisptr.openCV(path1, path2)
+    def normalizeBright(self, path1, path2):
+        self.thisptr.normalizeBright(path1, path2)
     def move(self, dx, dy):
         self.thisptr.move(dx, dy)
         

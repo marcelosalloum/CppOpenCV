@@ -42,12 +42,13 @@ cv::Mat AntiShake::fixPictures(Mat &img_1, Mat &img_2, int loops, double final_p
 	 * if value > 0, crop on both img_1 and img_2
 	 *
 	 * */
-	if (det > 1.0) {
+	if (det >= 1.0) {
 		applyHomography(H, img_1, img_2);
 		cout << "STEP 12 fixed original pictures 1->2" << endl;
 		return H;
 	} else {
 		Mat H2 = H.inv();
+		H.release();
 		applyHomography(H2, img_2, img_1);
 		cout << "STEP 12 fixed original pictures 2->1 " << endl;
 		return H2;
@@ -66,8 +67,10 @@ void AntiShake::applyHomography(Mat &homography, Mat &img_1, Mat &img_2) {
 		cv::warpPerspective(img_1,  // input image
 				compensated,        // output image
 				homography, cv::Size(img_1.cols, img_1.rows), INTER_CUBIC); // size of output image
-		original.copyTo(img_1);
-		compensated.copyTo(img_2);
+		original.copyTo(img_2);
+		compensated.copyTo(img_1);
+		original.release();
+		compensated.release();
 		cout << endl << "==== STEP 10 complete: distortion fix applied" << endl << endl;
 	}
 }
@@ -81,6 +84,9 @@ cv::Mat AntiShake::calcHomographyFeedbackController(Mat &img_1, Mat &img_2, int 
 	// STEP 0: RE-ESCALE, SO THE BIGGEST RESOLUTION IS 590x(something <= 590)
 	Mat workImage1, workImage2;
 	double scale = 1.0 / (MAX(img_1.rows,img_1.cols) / final_pic_size);
+	if (final_pic_size == 0) {
+		scale = 1.0;
+	}
 	workImage1.create(scale * img_1.rows, scale * img_1.cols, img_1.type());
 	workImage2.create(scale * img_2.rows, scale * img_2.cols, img_2.type());
 	cv::resize(img_1, workImage1, workImage1.size(), 0, 0, INTER_CUBIC);
@@ -380,6 +386,7 @@ void AntiShake::getBestMatches(int matches_type, int nthNumber, std::vector<DMat
 	// -- STEP A: Matching descriptor vectors using BruteForceMatcher
 	BFMatcher matcher(NORM_L1, true);
 	matcher.match(descriptors_1, descriptors_2, matches);
+	cout << "==== AT FIRST,    " << matches.size() << "    MATCHES FOUND!!!" << endl;
 	vector<DMatch> centerPoints, periferyPoints;
 // TODO
 	switch (matches_type) {
@@ -432,8 +439,6 @@ void AntiShake::quadrantMethod(int nthNumber, std::vector<DMatch> &matches, vect
 	 * ____(Xc,Yc)_____
 	 * quad3  |  quad4
 	 * */
-	cout << "Xc + Xc * centerEdgeLimit = " << Xc + Xc * centerEdgeLimit << endl;
-	cout << "Yc - Yc * centerEdgeLimit = " << Yc - Yc * centerEdgeLimit << endl;
 	std::vector<DMatch> quad1, quad2, quad3, quad4;
 	//-- STEP 1: Lets separate each point accoding to its quadrant
 	for (unsigned int i = 0; i < matches.size(); i++) {
@@ -577,10 +582,6 @@ void AntiShake::meanDistancesMatches(int nthNumber, std::vector<DMatch> &matches
 		deltaX = abs(p1->x - p2->x);
 		deltaY = abs(p1->y - p2->y);
 
-		cout << "deltaX = " << deltaX << endl;
-		cout << "sumX = " << sumX << endl;
-		cout << "meanX = " << meanX << endl;
-		cout << "deltaX/meanX = " << deltaX / meanX << endl << endl;
 		if ((abs(deltaX / meanX - 1) < absoluteRelation)
 				&& (abs(deltaY / meanY - 1) < absoluteRelation)) {
 			new_matches.push_back(matches[i]);
@@ -591,9 +592,11 @@ void AntiShake::meanDistancesMatches(int nthNumber, std::vector<DMatch> &matches
 		}
 	}
 
-	if (nthNumber != 0 && nthNumber < (int) new_matches.size()) {
+	if (nthNumber != 0) {
 		//-- STEP B: gets just the first N matches with the smaller value for distance (N=nthNumber)
-		filterElements(new_matches, nthNumber);
+		filterElements(new_matches,
+				(int) min((double) new_matches.size(),
+						max((double) nthNumber, 0.2 * new_matches.size())));
 	}
 	matches = new_matches;
 }
@@ -717,7 +720,8 @@ cv::Mat cropImageBlackFrame(cv::Mat &img) { //TODO
 	}
 }
 
-void AntiShake::compensateBrightness(Mat &src1, Mat &src2, Mat &output1, Mat &output2) {
+void AntiShake::compensateBrightness(Mat &src1, Mat &src2, Mat &output1, Mat &output2,
+		double brightRate) {
 	// STEP A: Create copies
 	src1.copyTo(output1);
 	src2.copyTo(output2);
@@ -739,8 +743,8 @@ void AntiShake::compensateBrightness(Mat &src1, Mat &src2, Mat &output1, Mat &ou
 	brightness2 = brightness2 / ((output2.rows) * (output2.cols));
 
 	// STEP C: Equalizes brightness:
-	double brightRate, beta;
-	beta = abs(brightness1 - brightness2) / 50;
+	double beta = 0;
+//	beta = abs(brightness1 - brightness2) / 50;
 	cv::Mat* darkerPic;		// The picture that will be brighten
 	if (brightness1 > brightness2) {
 		darkerPic = &output2;

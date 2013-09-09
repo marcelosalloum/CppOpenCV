@@ -36,6 +36,7 @@ public:
 	void reduceDifferences(Mat &img_1, Mat &img_2, Mat &workImage1, Mat &workImage2, int blur1,
 			int blur2);
 	virtual ~AntiShake();
+	void compensateBrightness(Mat &src1, Mat &src2, Mat &output1, Mat &output2, double brightRate = 1.0);
 private:
 	cv::Mat eye3x3;
 	bool shouldPrint;
@@ -57,7 +58,6 @@ private:
 			vector<KeyPoint> keypoints_2, int Y, int X, int quad_type, double centerEdgeLimit);
 	void filterElements(std::vector<DMatch> &matches, int nthNumber);
 	// COMPENSATE DIFFERENCES BETWEEN THE PICTURES:
-	void compensateBrightness(Mat &src1, Mat &src2, Mat &output1, Mat &output2);
 	void compensateBlurriness(Mat &src, Mat &output, int kernelSize);
 	void sobelOperator(Mat &src, Mat &output, int scale, int delta);
 
