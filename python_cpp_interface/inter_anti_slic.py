@@ -15,6 +15,44 @@ import matplotlib.cm as cm
 from rectangle import Rectangle
 #from skimage import filter
 
+def calculate_ambiguous_clusters(first_image_cluster_segments_std, second_image_cluster_segments_std):
+    ambiguous_low_std_clusters = []
+    ambiguous_high_std_clusters = []
+
+    for key, value in first_image_cluster_segments_std.iteritems():
+
+        first_std = first_image_cluster_segments_std[key]
+        second_std = second_image_cluster_segments_std[key]
+
+        max_std = max([first_std, second_std])
+
+        std_diff = np.absolute(first_std - second_std)
+
+        if std_diff < 1.5 :#and first_image_cluster_segments_ocurrency[key] < 4500:
+
+            print "TAMANHO DO CLUUUSTER:"
+            print second_image_std_mean
+            if max_std < second_image_std_mean:
+                ambiguous_low_std_clusters.append(key)
+            else:
+                ambiguous_high_std_clusters.append(key)
+                
+    low_ambiguous_cluster = np.zeros(shape=(len(transitional_matrix),len(transitional_matrix[0])))
+    high_ambiguous_cluster = np.zeros(shape=(len(transitional_matrix),len(transitional_matrix[0])))
+    
+    for index_1 in range(len(transitional_matrix)):
+        for index_2 in range(len(transitional_matrix[index_1])):
+
+            cluster_tuple = transitional_matrix[index_1][index_2]
+
+            if cluster_tuple in ambiguous_low_std_clusters:
+                low_ambiguous_cluster[index_1][index_2] = 1
+
+            elif cluster_tuple in ambiguous_high_std_clusters:
+                high_ambiguous_cluster[index_1][index_2] = 1
+    
+                
+    return [low_ambiguous_cluster, high_ambiguous_cluster]
 
 def get_bounds(image_result_matrix, index_1, index_2):
             
@@ -161,33 +199,21 @@ second_max_iter = 10
 ###############################################################################
 ## FIRST IMAGE
 ###############################################################################
+
+### LOAD IMAGE ###
 pil_image = Image.open(first_image_name).convert('RGB')
 width, height = pil_image.size
-
 if scale != 1:
     pil_image = pil_image.resize((int(scale*width), int(scale*height)), Image.ANTIALIAS)
-
-first_std_image = image_std(pil_image)
-
 first_image = np.asarray(pil_image)
 first_image_final = np.copy(first_image)
 
-# Compute clustering
-print("Compute structured hierarchical clustering...")
+### CALCULATE IMAGE STD MAP ###
+first_std_image = image_std(pil_image)
 
-#first_label = felzenszwalb(pil_image, scale=100, sigma=0.5, min_size=50)
-#first_label = slic(first_image, ratio=first_slic_ratio, n_segments=first_n_segments, sigma=first_sigma, max_iter=first_max_iter)
+### SETUP VARIABLES ###
 first_label = np.zeros(shape=(len(first_image),len(first_image[0])))
-#first_image_edges = filter.canny(first_image, sigma=5)
-#first_label = quickshift(pil_image, kernel_size=kernel_size, max_dist=max_dist, ratio=ratio)
-
-fig, ax = plt.subplots(1, 3)
-plt.subplots_adjust(0.05, 0.05, 0.95, 0.95, 0.05, 0.05)
-ax[0].imshow(mark_boundaries(first_image_final, first_label))
-ax[0].set_title("1st Image")
-
 first_image = pl.mean(first_image,2)
-
 first_label = np.reshape(first_label, first_image.shape)
 
 ###############################################################################
@@ -217,13 +243,7 @@ second_image_final = np.copy(second_image)
 
 print("Compute structured hierarchical clustering...")
 
-#second_label = felzenszwalb(pil_image, scale=100, sigma=0.5, min_size=50)
 second_label = slic(second_image, ratio=second_slic_ratio, n_segments=second_n_segments, sigma=second_sigma, max_iter=second_max_iter)
-#second_image_edges = filter.canny(second_image, sigma=4)
-#second_label = quickshift(pil_image, kernel_size=kernel_size, max_dist=max_dist, ratio=ratio)
-
-ax[1].imshow(mark_boundaries(second_image_final, second_label))
-ax[1].set_title("2nd Image")
 
 second_image = pl.mean(second_image,2)
 
@@ -242,9 +262,6 @@ second_image_cluster_segments_ocurrency = segmented_stds[3]
 
 
 ######## PRINT MEANS ########
-
-print "CLUSTERS MEANS"
-
 first_image_cluster_std_array = []
 second_image_cluster_std_array = []
 
@@ -256,6 +273,7 @@ for key, value in second_image_cluster_segments_std.iteritems():
     
 second_image_std_mean = np.mean(second_image_cluster_std_array)
 
+print "CLUSTERS MEANS"
 print np.mean(first_image_cluster_std_array)
 print second_image_std_mean
 
@@ -265,46 +283,11 @@ print np.std(second_image_cluster_std_array)
 
 
 ######## CALCULATE AMBIGUOUS (SAME STD) CLUSTERS ########
-ambiguous_low_std_clusters = []
-ambiguous_high_std_clusters = []
-
-for key, value in first_image_cluster_segments_std.iteritems():
-    
-    first_std = first_image_cluster_segments_std[key]
-    second_std = second_image_cluster_segments_std[key]
-    
-    max_std = max([first_std, second_std])
-    
-    std_diff = np.absolute(first_std - second_std)
-    
-    if std_diff < 1.5 :#and first_image_cluster_segments_ocurrency[key] < 4500:
-        
-        print "TAMANHO DO CLUUUSTER:"
-        print second_image_std_mean
-        if max_std < second_image_std_mean:
-            ambiguous_low_std_clusters.append(key)
-        else:
-            ambiguous_high_std_clusters.append(key)
-
+abiguous_clusters = calculate_ambiguous_clusters(first_image_cluster_segments_std, second_image_cluster_segments_std)
+low_ambiguous_cluster = abiguous_clusters[0]
+high_ambiguous_cluster = abiguous_clusters[1]
 
 ######## PLOT AMBIGUOUS CLUSTERS ########
-low_ambiguous_cluster = np.zeros(shape=(len(transitional_matrix),len(transitional_matrix[0])))
-high_ambiguous_cluster = np.zeros(shape=(len(transitional_matrix),len(transitional_matrix[0])))
-for index_1 in range(len(transitional_matrix)):
-    for index_2 in range(len(transitional_matrix[index_1])):
-        
-        cluster_tuple = transitional_matrix[index_1][index_2]
-        
-        if cluster_tuple in ambiguous_low_std_clusters:
-            low_ambiguous_cluster[index_1][index_2] = 1
-        
-        elif cluster_tuple in ambiguous_high_std_clusters:
-            high_ambiguous_cluster[index_1][index_2] = 1
-        
-
-
-## PRINT STD() GRAPHS
-
 fig, std_ax = plt.subplots(1, 2)
 plt.subplots_adjust(0.05, 0.05, 0.95, 0.95, 0.05, 0.05)
 
@@ -315,68 +298,13 @@ std_ax[1].imshow(high_ambiguous_cluster, cmap = cm.Greys_r)
 std_ax[1].set_title("High Ambiguity")
 fig.show()
 
+
 print "LIST OF STD() PER SEGMENT:"
-
-dead_cluster_segments_list = []
-
 for key in first_image_cluster_segments_std:
     print key
     print first_image_cluster_segments_std[key]
     print second_image_cluster_segments_std[key]
     print " "
-    
-    #if first_image_cluster_segments_std[key] < 1.278 and second_image_cluster_segments_std[key] < 1.278  :
-    #    dead_cluster_segments_list.append(key)
-    
-#print dead_cluster_segments_list
-
-dead_cluster_binary_matrix = np.zeros(shape=(len(transitional_matrix),len(transitional_matrix[0])))
-index_1_dead_array = []
-index_2_dead_array = []
-
-for index_1 in range(len(transitional_matrix)):
-    for index_2 in range(len(transitional_matrix[index_1])):
-        
-        if transitional_matrix[index_1][index_2] in dead_cluster_segments_list:
-            dead_cluster_binary_matrix[index_1][index_2] = 1
-            index_1_dead_array.append(index_1)
-            index_2_dead_array.append(index_2)
-            
-
-if len(index_1_dead_array) > 0:
-    ## Create dead clusters neighbor box
-    dead_box_1_max = max(index_1_dead_array)
-    dead_box_1_min = min(index_1_dead_array)
-    dead_box_2_max = max(index_2_dead_array)
-    dead_box_2_min = min(index_2_dead_array)
-
-
-    ## Calculate std() for dead cluster neighbor box in each image
-    first_image_dead_cluster_std = 0.0
-    second_image_dead_cluster_std = 0.0
-
-    for index_1 in range(len(first_std_image)):
-    
-        if index_1 < dead_box_1_max and index_1 > dead_box_1_min:
-        
-            for index_2 in range(len(first_std_image[index_1])):
-            
-                if index_2 < dead_box_2_max and index_2 > dead_box_2_min:
-                    first_image_dead_cluster_std = first_image_dead_cluster_std + first_std_image[index_1][index_2]
-                    second_image_dead_cluster_std = second_image_dead_cluster_std + second_std_image[index_1][index_2]
-
-
-    if first_image_dead_cluster_std > second_image_dead_cluster_std:
-        dead_box_owner = 1
-    else:
-        dead_box_owner = 2
-
-    fig = pl.figure(figsize=(5, 5))
-    pl.imshow(dead_cluster_binary_matrix, cmap = cm.hot)
-    pl.xticks(())
-    pl.yticks(())
-    fig.show()
-
 
 ## CREATE 2D REPRESENTATION OF THE STD() ON BOTH IMAGE'S PIXELS DIVIDED BY THE INTERSECTION OF THE CLUSTERS MATRIXES
 first_image_cluster_segments_std_array = np.zeros(shape=(len(transitional_matrix),len(transitional_matrix[0])))
@@ -389,7 +317,6 @@ for index_1 in range(len(transitional_matrix)):
 
 
 ## PRINT STD() GRAPHS
-
 fig, std_ax = plt.subplots(1, 2)
 plt.subplots_adjust(0.05, 0.05, 0.95, 0.95, 0.05, 0.05)
 
@@ -410,24 +337,17 @@ final_image_matrix = np.zeros(shape=(len(first_image_final),len(first_image_fina
 for index_1 in range(len(final_image)):
     for index_2 in range(len(final_image[index_1])):
         
-        if transitional_matrix[index_1][index_2] in dead_cluster_segments_list:
-            if dead_box_owner is 1:
-                final_image[index_1][index_2] = first_image_final[index_1][index_2]
-            else:
-                final_image[index_1][index_2] = second_image_final[index_1][index_2]
-                
-        else:
-            first_image_delta = first_image_cluster_segments_std_array[index_1][index_2]
-            second_image_delta = second_image_cluster_segments_std_array[index_1][index_2]
+        first_image_delta = first_image_cluster_segments_std_array[index_1][index_2]
+        second_image_delta = second_image_cluster_segments_std_array[index_1][index_2]
+    
         
-            
-            #Compare modules
-            if first_image_delta > second_image_delta:
-                final_image[index_1][index_2] = [0, 0, 0]
-                final_image_matrix[index_1][index_2] = 0
-            else:
-                final_image[index_1][index_2] = [255, 255, 255]
-                final_image_matrix[index_1][index_2] = 1                
+        #Compare modules
+        if first_image_delta > second_image_delta:
+            final_image[index_1][index_2] = [0, 0, 0]
+            final_image_matrix[index_1][index_2] = 0
+        else:
+            final_image[index_1][index_2] = [255, 255, 255]
+            final_image_matrix[index_1][index_2] = 1                
                 
 
 ###############################################################################
@@ -511,7 +431,7 @@ for index_1 in range(len(final_image_matrix)):
                 upper_geometry = int(min(bounds))
                 
                 if is_first:
-                    geometry_row_translation = 0#geometries_first_row_index_dict[lower_geometry] - 1
+                    geometry_row_translation = geometries_first_row_index_dict[lower_geometry] - 1
                     
                     for index_final_1 in range(len(first_image_result_matrix)):
                         index_final_1_moved = index_final_1 + geometry_row_translation
@@ -545,7 +465,7 @@ for index_1 in range(len(final_image_matrix)):
                                 
                     second_image_result_matrix[index_1][index_2] = upper_geometry
 
-## CALCULATE THE NUMBER OF POINTS PER CLUSTER SEGMENT GEOMETRY
+### CALCULATE THE NUMBER OF POINTS PER CLUSTER SEGMENT GEOMETRY
 first_image_unique_geometries = np.unique(first_image_result_matrix)
 second_image_unique_geometries = np.unique(second_image_result_matrix)
 
@@ -597,8 +517,7 @@ for index_1 in range(len(final_image_cluster)):
         else:
             final_image[index_1][index_2] = second_image_final[index_1][index_2]
 
-# PLOT FINAL MATRIX
-
+### PLOT FINAL MATRIX
 fig, std_ax = plt.subplots(1, 3)
 plt.subplots_adjust(0.05, 0.05, 0.95, 0.95, 0.05, 0.05)
 
@@ -613,17 +532,7 @@ std_ax[2].set_title("Result Geometry")
 fig.show()
 
 
-
-# for row_index in range(len(final_image_matrix)):
-#     for column_index in range(len(final_image_matrix[row_index])):
-#         
-#         if int(final_image_matrix[column_index][row_index]) == 0:
-#             final_image[column_index][row_index] = first_image_final[column_index][row_index]
-#         else:
-#             final_image[column_index][row_index] = second_image_final[column_index][row_index]
-#             
-
-#print label
+### PRINT LABEL
 print("Elapsed time: ", time.time() - st)
 print("Number of pixels: ", second_label.size)
 print("Number of clusters: " +str(np.unique(second_label).size) + "  " +  str(np.unique(first_label).size))
@@ -632,7 +541,14 @@ print("Number of clusters: " +str(np.unique(second_label).size) + "  " +  str(np
 ### SAVE AND PLOT IMAGES
 sp.misc.imsave("output/" + str(width) + "_" + str(height) + "_" + str(scale) + "_" +  str(second_slic_ratio) + "_" + str(second_n_segments) + "_" + str(second_sigma) + '.png', final_image)  
 
-# Adds 3rd image and print big graph:
+### Adds 3rd image and print big graph:
+
+fig, ax = plt.subplots(1, 3)
+plt.subplots_adjust(0.05, 0.05, 0.95, 0.95, 0.05, 0.05)
+ax[0].imshow(mark_boundaries(first_image_final, first_label))
+ax[0].set_title("1st Image")
+ax[1].imshow(mark_boundaries(second_image_final, second_label))
+ax[1].set_title("2nd Image")
 ax[2].imshow(final_image)
 ax[2].set_title("Result Image")
 for a in ax:
