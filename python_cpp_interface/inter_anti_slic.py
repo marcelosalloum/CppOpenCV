@@ -15,7 +15,24 @@ import matplotlib.cm as cm
 from rectangle import Rectangle
 #from skimage import filter
 
-def calculate_ambiguous_clusters(first_image_cluster_segments_std, second_image_cluster_segments_std):
+def calculate_final_image_matrix(shape_image, first_image_cluster_segments_std_array, second_image_cluster_segments_std_array):
+    final_image_matrix = np.zeros(shape=(len(shape_image),len(shape_image[0])))
+
+    for index_1 in range(len(shape_image)):
+        for index_2 in range(len(shape_image[index_1])):
+
+            first_image_delta = first_image_cluster_segments_std_array[index_1][index_2]
+            second_image_delta = second_image_cluster_segments_std_array[index_1][index_2]
+
+            #Compare modules
+            if first_image_delta > second_image_delta:
+                final_image_matrix[index_1][index_2] = 0
+            else:
+                final_image_matrix[index_1][index_2] = 1
+                
+    return final_image_matrix
+
+def calculate_ambiguous_clusters(first_image_cluster_segments_std, second_image_cluster_segments_std, image_std_mean):
     ambiguous_low_std_clusters = []
     ambiguous_high_std_clusters = []
 
@@ -28,11 +45,9 @@ def calculate_ambiguous_clusters(first_image_cluster_segments_std, second_image_
 
         std_diff = np.absolute(first_std - second_std)
 
-        if std_diff < 1.5 :#and first_image_cluster_segments_ocurrency[key] < 4500:
+        if std_diff < 2.5 :
 
-            print "TAMANHO DO CLUUUSTER:"
-            print second_image_std_mean
-            if max_std < second_image_std_mean:
+            if max_std < image_std_mean:
                 ambiguous_low_std_clusters.append(key)
             else:
                 ambiguous_high_std_clusters.append(key)
@@ -52,7 +67,7 @@ def calculate_ambiguous_clusters(first_image_cluster_segments_std, second_image_
                 high_ambiguous_cluster[index_1][index_2] = 1
     
                 
-    return [low_ambiguous_cluster, high_ambiguous_cluster]
+    return [low_ambiguous_cluster, high_ambiguous_cluster, ambiguous_low_std_clusters, ambiguous_high_std_clusters]
 
 def get_bounds(image_result_matrix, index_1, index_2):
             
@@ -158,9 +173,9 @@ def image_std(image):
     return new_image
 
 
-###############################################################################
+##############################################################################################################################################################
 ## BEGINNING
-###############################################################################
+##############################################################################################################################################################
 st = time.time()
 
 # Quickshift clustering alg. parameters
@@ -171,64 +186,212 @@ ratio = 0.15
 r = Rectangle(1, 2, 3, 4)
 r.openCV(str(sys.argv[1]), str(sys.argv[2]))
 
-
 first_image_name ="antiShake_0.jpg"
 second_image_name = "antiShake_1.jpg"
 
 # r.normalizeBright("antiShake_0.jpg", "antiShake_1.jpg")
-# 
 # first_image_name = "normalizeBright_0.jpg"
 # second_image_name = "normalizeBright_1.jpg"
-
 # first_image_name = str(sys.argv[1])
 # second_image_name = str(sys.argv[2])
 
-#scale = 0.25 # from 0 to 1
 scale = float(sys.argv[3])
-
 first_slic_ratio = int(sys.argv[4])
 first_n_segments = int(sys.argv[5])
 first_sigma = int(sys.argv[6])
-first_max_iter = 10
-
 second_slic_ratio = int(sys.argv[7])
 second_n_segments = int(sys.argv[8])
 second_sigma = int(sys.argv[9])
+
+first_max_iter = 10
 second_max_iter = 10
 
 ###############################################################################
 ## FIRST IMAGE
 ###############################################################################
 
+is_clustering_done = False
+
+clustering_index = 0
+while not is_clustering_done:
 ### LOAD IMAGE ###
-pil_image = Image.open(first_image_name).convert('RGB')
-width, height = pil_image.size
-if scale != 1:
-    pil_image = pil_image.resize((int(scale*width), int(scale*height)), Image.ANTIALIAS)
-first_image = np.asarray(pil_image)
-first_image_final = np.copy(first_image)
+    pil_image = Image.open(first_image_name).convert('RGB')
+    width, height = pil_image.size
+    if scale != 1:
+        pil_image = pil_image.resize((int(scale*width), int(scale*height)), Image.ANTIALIAS)
+    first_image = np.asarray(pil_image)
+    first_image_final = np.copy(first_image)
 
-### CALCULATE IMAGE STD MAP ###
-first_std_image = image_std(pil_image)
+    ### CALCULATE IMAGE STD MAP ###
+    first_std_image = image_std(pil_image)
 
-### SETUP VARIABLES ###
-first_label = np.zeros(shape=(len(first_image),len(first_image[0])))
-first_image = pl.mean(first_image,2)
-first_label = np.reshape(first_label, first_image.shape)
+    ### SETUP VARIABLES ###
+    first_label = np.zeros(shape=(len(first_image),len(first_image[0])))
+    first_image = pl.mean(first_image,2)
+    first_label = np.reshape(first_label, first_image.shape)
 
-###############################################################################
-#SECOND IMAGE
-###############################################################################
-pil_image = Image.open(second_image_name)
+    ###############################################################################
+    #SECOND IMAGE
+    ###############################################################################
 
-if scale != 1:
-    pil_image = pil_image.resize((int(scale*width), int(scale*height)), Image.ANTIALIAS)
+    ### LOAD IMAGE ###
+    pil_image = Image.open(second_image_name)
+    if scale != 1:
+        pil_image = pil_image.resize((int(scale*width), int(scale*height)), Image.ANTIALIAS)
+    pil_image = pil_image.convert('RGB')
+    second_image = np.asarray(pil_image)
+    second_image_final = np.copy(second_image)
 
-pil_image = pil_image.convert('RGB')
-second_image = np.asarray(pil_image)
+    ### CALCULATE IMAGE STD MAP ###
+    second_std_image = image_std(pil_image)
 
-second_std_image = image_std(pil_image)
+    ### APPLY SLIC ALG ###
+    second_label = slic(second_image, ratio=second_slic_ratio, n_segments=second_n_segments, sigma=second_sigma, max_iter=second_max_iter)
 
+    ### CONVERT TO USABLE FORMAT ###
+    second_image = pl.mean(second_image,2)
+    second_label = np.reshape(second_label, second_image.shape)
+
+    ###############################################################################
+    # POST PROCESSING
+    ###############################################################################
+
+    #transitional_matrix = merge_matrixes(first_label, second_label)
+    transitional_matrix = second_label
+
+    ##### CALCULATE SEGMENTS MEANS #####
+    segmented_stds = create_segmented_cluster_std_estimate(first_std_image, second_std_image, transitional_matrix)
+    first_image_cluster_segments_std = segmented_stds[0]
+    second_image_cluster_segments_std = segmented_stds[1]
+    first_image_cluster_segments_ocurrence = segmented_stds[2]
+    second_image_cluster_segments_ocurrence = segmented_stds[3]
+
+    ######## PRINT MEANS ########
+    first_image_cluster_std_array = []
+    second_image_cluster_std_array = []
+
+    for key, value in first_image_cluster_segments_std.iteritems():
+        first_image_cluster_std_array.append(value)
+
+    for key, value in second_image_cluster_segments_std.iteritems():
+        second_image_cluster_std_array.append(value)
+    
+    first_image_std_mean = np.mean(first_image_cluster_std_array)
+    second_image_std_mean = np.mean(second_image_cluster_std_array)
+
+    image_std_mean = min([second_image_std_mean, first_image_std_mean])
+
+    #print "CLUSTERS MEANS AND STD"
+    #print [[np.mean(first_image_cluster_std_array), np.std(first_image_cluster_std_array)], [second_image_std_mean, np.std(second_image_cluster_std_array)]]
+    #print " "
+
+    ######## CALCULATE AMBIGUOUS (SAME STD) CLUSTERS ########
+    print "IMAGE STDS MEANS"
+    print second_image_std_mean
+    print image_std_mean
+    print "  "
+    
+    print "IMAGE STDS "
+    print np.std(second_image_cluster_std_array)
+    print np.std(first_image_cluster_std_array)
+    print "  "
+    
+    abiguous_clusters = calculate_ambiguous_clusters(first_image_cluster_segments_std, second_image_cluster_segments_std, image_std_mean)
+    low_ambiguous_cluster = abiguous_clusters[0]
+    high_ambiguous_cluster = abiguous_clusters[1]
+
+    low_ambiguous_array = abiguous_clusters[2]
+    high_ambiguous_array = abiguous_clusters[3]
+
+    #### CALCULATE AREA OF EACH AMBIGUITY #####
+
+    low_ambiguous_area = 0
+    for low_index in range(len(low_ambiguous_array)):
+        low_ambiguous_area += first_image_cluster_segments_ocurrence[low_ambiguous_array[low_index]]
+    
+    high_ambiguous_area = 0
+    for high_index in range(len(high_ambiguous_array)):
+        high_ambiguous_area += first_image_cluster_segments_ocurrence[high_ambiguous_array[high_index]]
+    
+
+    low_ambiguous_clusters_row = []
+    low_ambiguous_clusters_col = []
+
+    high_ambiguous_clusters_row = []
+    high_ambiguous_clusters_col = []
+
+    for index_row in range(len(low_ambiguous_cluster)):
+        for index_col in range(len(low_ambiguous_cluster[index_row])):
+            if low_ambiguous_cluster[index_row][index_col] == 1:
+                low_ambiguous_clusters_row.append(index_row)
+                low_ambiguous_clusters_col.append(index_col)
+    low_row_std = np.std(low_ambiguous_clusters_row)
+    low_col_std = np.std(low_ambiguous_clusters_col)
+
+    for index_row in range(len(high_ambiguous_cluster)):
+        for index_col in range(len(high_ambiguous_cluster[index_row])):
+            if high_ambiguous_cluster[index_row][index_col] == 1:
+                high_ambiguous_clusters_row.append(index_row)
+                high_ambiguous_clusters_col.append(index_col)
+    high_row_std = np.std(high_ambiguous_clusters_row)
+    high_col_std = np.std(high_ambiguous_clusters_col)
+
+    # print "LOW AMBIGUOUS AREA STD:"
+    # print low_row_std
+    # print low_col_std
+    # print "  "
+    # print "HIGH AMBIGUOUS AREA STD:"
+    # print high_row_std
+    # print high_col_std
+    # print "  "
+    print "AMBIGUOUS AREA COUNT:"
+    print low_ambiguous_area
+    print high_ambiguous_area
+    print " "
+    
+    ambiguous_dif = low_ambiguous_area - high_ambiguous_area
+    
+    #is_clustering_done = True
+    
+    if np.absolute(ambiguous_dif) < 200 or clustering_index == 3:
+        is_clustering_done = True
+        print "ITERATION FINISHED AT INDEX ", clustering_index
+    else:
+        if clustering_index == 0:
+            if ambiguous_dif > 0:
+                ## LOW AREA IS BIGGER, NEED TO DECREASE NUMBER OF CLUSTERS AND INCREASE BLUR
+                second_n_segments = second_n_segments - 4
+                #second_sigma = second_sigma + 1
+            else:
+                second_n_segments = second_n_segments + 2
+                #second_sigma = second_sigma - 1
+            
+        elif clustering_index == 1:
+            if ambiguous_dif > 0:
+                ## LOW AREA IS BIGGER, NEED TO DECREASE NUMBER OF CLUSTERS AND INCREASE BLUR
+                second_n_segments = second_n_segments - 1
+                #second_sigma = second_sigma + 1
+            else:
+                second_n_segments = second_n_segments + 1
+                #second_sigma = second_sigma - 1
+
+        elif clustering_index == 2:
+            if ambiguous_dif > 0:
+                ## LOW AREA IS BIGGER, NEED TO DECREASE NUMBER OF CLUSTERS AND INCREASE BLUR
+                #if second_n_segments != 2:
+                    #second_n_segments = second_n_segments - 1
+                second_sigma = second_sigma + 2
+            else:
+                #second_n_segments = second_n_segments + 1
+                second_sigma = second_sigma - 2
+                
+        clustering_index = clustering_index + 1
+                
+        print "NEW CLUSTER N IS ", second_n_segments
+        print "NEW BLUR IS ", second_sigma
+        
+
+#### PLOT STD MAP ####
 fig, std_ax = plt.subplots(1, 2)
 plt.subplots_adjust(0.05, 0.05, 0.95, 0.95, 0.05, 0.05)
 
@@ -238,54 +401,6 @@ std_ax[0].set_title("1st STD Map")
 std_ax[1].imshow(second_std_image)
 std_ax[1].set_title("2nd STD Map")
 fig.show()
-
-second_image_final = np.copy(second_image)
-
-print("Compute structured hierarchical clustering...")
-
-second_label = slic(second_image, ratio=second_slic_ratio, n_segments=second_n_segments, sigma=second_sigma, max_iter=second_max_iter)
-
-second_image = pl.mean(second_image,2)
-
-second_label = np.reshape(second_label, second_image.shape)
-
-###############################################################################
-# POST PROCESSING
-###############################################################################
-transitional_matrix = merge_matrixes(first_label, second_label)
-
-segmented_stds = create_segmented_cluster_std_estimate(first_std_image, second_std_image, transitional_matrix)
-first_image_cluster_segments_std = segmented_stds[0]
-second_image_cluster_segments_std = segmented_stds[1]
-first_image_cluster_segments_ocurrency = segmented_stds[2]
-second_image_cluster_segments_ocurrency = segmented_stds[3]
-
-
-######## PRINT MEANS ########
-first_image_cluster_std_array = []
-second_image_cluster_std_array = []
-
-for key, value in first_image_cluster_segments_std.iteritems():
-    first_image_cluster_std_array.append(value)
-
-for key, value in second_image_cluster_segments_std.iteritems():
-    second_image_cluster_std_array.append(value)
-    
-second_image_std_mean = np.mean(second_image_cluster_std_array)
-
-print "CLUSTERS MEANS"
-print np.mean(first_image_cluster_std_array)
-print second_image_std_mean
-
-print "CLUSTER STD"
-print np.std(first_image_cluster_std_array)
-print np.std(second_image_cluster_std_array)
-
-
-######## CALCULATE AMBIGUOUS (SAME STD) CLUSTERS ########
-abiguous_clusters = calculate_ambiguous_clusters(first_image_cluster_segments_std, second_image_cluster_segments_std)
-low_ambiguous_cluster = abiguous_clusters[0]
-high_ambiguous_cluster = abiguous_clusters[1]
 
 ######## PLOT AMBIGUOUS CLUSTERS ########
 fig, std_ax = plt.subplots(1, 2)
@@ -331,25 +446,8 @@ fig.show()
 ###############################################################################
 # FINAL IMAGE
 ###############################################################################
-final_image = np.copy(first_image_final)
-final_image_matrix = np.zeros(shape=(len(first_image_final),len(first_image_final[0])))
-
-for index_1 in range(len(final_image)):
-    for index_2 in range(len(final_image[index_1])):
-        
-        first_image_delta = first_image_cluster_segments_std_array[index_1][index_2]
-        second_image_delta = second_image_cluster_segments_std_array[index_1][index_2]
-    
-        
-        #Compare modules
-        if first_image_delta > second_image_delta:
-            final_image[index_1][index_2] = [0, 0, 0]
-            final_image_matrix[index_1][index_2] = 0
-        else:
-            final_image[index_1][index_2] = [255, 255, 255]
-            final_image_matrix[index_1][index_2] = 1                
+final_image_matrix = calculate_final_image_matrix(first_image_final, first_image_cluster_segments_std_array, second_image_cluster_segments_std_array)
                 
-
 ###############################################################################
 # GEOMETRY ANALISYS
 ###############################################################################
