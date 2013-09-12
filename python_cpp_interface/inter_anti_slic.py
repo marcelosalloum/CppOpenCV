@@ -629,6 +629,91 @@ std_ax[2].imshow(final_image_cluster)
 std_ax[2].set_title("Result Geometry")
 fig.show()
 
+###############################################################################
+# BORDER BLUR
+###############################################################################
+
+
+final_blurred_image = np.copy(final_image)
+
+for index_row in range(len(final_image_cluster)):
+    for index_col in range(len(final_image_cluster[index_row])):
+        
+        iteration_image_value = final_image_cluster[index_row][index_col]
+        
+        pixels_array = []
+        
+        ### TOP PIXELS
+        if index_row > 0:
+            up_image_value = final_image_cluster[index_row-1][index_col]
+            if up_image_value != iteration_image_value:
+                pixels_array.append(final_blurred_image[index_row-1][index_col])
+
+            if index_row > 1:
+                top_up_image_value = final_image_cluster[index_row-2][index_col]
+                if top_up_image_value != iteration_image_value:
+                    pixels_array.append(final_blurred_image[index_row-2][index_col])
+                
+        ## BOTTOM PIXELS
+        if index_row < (len(final_image_cluster) - 1):
+            down_image_value = final_image_cluster[index_row+1][index_col]
+            if down_image_value != iteration_image_value:
+                pixels_array.append(final_blurred_image[index_row+1][index_col])
+
+            if index_row < (len(final_image_cluster) - 2):
+                top_down_image_value = final_image_cluster[index_row+2][index_col]
+                if top_down_image_value != iteration_image_value:
+                    pixels_array.append(final_blurred_image[index_row+2][index_col])
+                
+        ## LEFT PIXELS 
+        if index_col > 0:
+            left_image_value = final_image_cluster[index_row][index_col-1]
+            if left_image_value != iteration_image_value:
+                pixels_array.append(final_blurred_image[index_row][index_col-1])
+                
+            if index_col > 1:
+                top_left_image_value = final_image_cluster[index_row][index_col-2]
+                if top_left_image_value != iteration_image_value:
+                    pixels_array.append(final_blurred_image[index_row][index_col-2])
+                
+        ## RIGHT PIXELS
+        if index_col < (len(final_image_cluster[index_row]) - 1):
+            right_image_value = final_image_cluster[index_row][index_col+1]
+            if right_image_value != iteration_image_value:
+                pixels_array.append(final_blurred_image[index_row][index_col+1])
+                
+            if index_col < (len(final_image_cluster[index_row]) - 2):
+                
+                top_right_image_value = final_image_cluster[index_row][index_col+2]
+                if top_right_image_value != iteration_image_value:
+                    pixels_array.append(final_blurred_image[index_row][index_col+2])
+        
+        if len(pixels_array) > 0:
+            
+            pixels_array.append(final_image[index_row][index_col])
+            
+            red_pixels = []
+            green_pixels = []
+            blue_pixels = []
+        
+            for pixel_index in range(len(pixels_array)):
+               rgb_array = pixels_array[pixel_index]
+           
+               red_pixels.append(rgb_array[0])
+               green_pixels.append(rgb_array[1])
+               blue_pixels.append(rgb_array[2])
+               
+            red_mean = pl.mean(red_pixels)
+            green_mean = pl.mean(green_pixels)
+            blue_mean = pl.mean(blue_pixels)
+            
+            final_blurred_image[index_row][index_col] = [red_mean, green_mean, blue_mean]
+            
+            
+###############################################################################
+# PRINT AND PLOT RESULTS
+###############################################################################
+
 
 ### PRINT LABEL
 print("Elapsed time: ", time.time() - st)
@@ -641,7 +726,7 @@ sp.misc.imsave("output/" + str(width) + "_" + str(height) + "_" + str(scale) + "
 
 ### Adds 3rd image and print big graph:
 
-fig, ax = plt.subplots(1, 3)
+fig, ax = plt.subplots(1, 4)
 plt.subplots_adjust(0.05, 0.05, 0.95, 0.95, 0.05, 0.05)
 ax[0].imshow(mark_boundaries(first_image_final, first_label))
 ax[0].set_title("1st Image")
@@ -649,6 +734,8 @@ ax[1].imshow(mark_boundaries(second_image_final, second_label))
 ax[1].set_title("2nd Image")
 ax[2].imshow(final_image)
 ax[2].set_title("Result Image")
+ax[3].imshow(final_blurred_image)
+ax[3].set_title("Blurred Image")
 for a in ax:
     a.set_xticks(())
     a.set_yticks(())
