@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 from skimage.segmentation import felzenszwalb, slic, quickshift
 from skimage.segmentation import mark_boundaries
 import matplotlib.cm as cm
-#from rectangle import Rectangle
+#from cheese_opencv import CheeseOpenCV
 #from skimage import filter
 
 
@@ -136,11 +136,11 @@ kernel_size = 9
 max_dist = 14
 ratio = 0.15
 
-#r = Rectangle(1, 2, 3, 4)
-#r.openCV(str(sys.argv[1]), str(sys.argv[2]))
+#anti_shake = CheeseOpenCV()
+#anti_shake.openCV(str(sys.argv[1]), str(sys.argv[2]))
 
-#first_image_name = "antiSHake1.jpg"
-#second_image_name = "antiSHake2.jpg"
+#first_image_name = "antiShake_0.jpg"
+#second_image_name = "antiShake_1.jpg"
 
 first_image_name = str(sys.argv[1])
 second_image_name = str(sys.argv[2])
