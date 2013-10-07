@@ -22,12 +22,13 @@ using namespace std;
 
 class AntiShake {
 public:
+	bool shouldPrint;
 	void meanMaxMin(Mat &image, double &max, double &minimal, double &mean);
 	cv::Mat antiShake(Mat &img_1, Mat &img_2, int matches_type, int numberOfMatches, int ffd,
 			double absoluteRelation);
 	cv::Mat fixPictures(Mat &img_1, Mat &img_2, int loops, double final_pic_size, double masDetDiff,
 			int featurePoints, int coreSize, double absoluteRelation, int matches_type = 0);
-	static AntiShake *getInstance(); 				// Singleton Pattern
+	static AntiShake *getInstance(bool shouldPrint = false, double maxDetDiff = 0.15); 				// Singleton Pattern
 	static void displayWindow(Mat image, string fileName, bool mightSave);
 	static void displayWindow(Mat image, string filename);
 	static void readme(string info);
@@ -39,7 +40,6 @@ public:
 	void compensateBrightness(Mat &src1, Mat &src2, Mat &output1, Mat &output2, double brightRate = 1.0);
 private:
 	cv::Mat eye3x3;
-	bool shouldPrint;
 	double maxDetDiff;
 	cv::Mat cropImageBlackFrame(cv::Mat &img);
 	static AntiShake *instance;						// Singleton Pattern
@@ -62,6 +62,7 @@ private:
 	void sobelOperator(Mat &src, Mat &output, int scale, int delta);
 
 protected:
+//	AntiShake(bool shouldPrint = true, double maxDetDiff = 0.15);
 	AntiShake(bool shouldPrint, double maxDetDiff); 								// Singleton Pattern
 };
 

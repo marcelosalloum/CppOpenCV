@@ -13,14 +13,19 @@
 
 // Singleton pattern:
 AntiShake *AntiShake::instance;
-AntiShake::AntiShake(bool shouldPrint = true, double maxDetDiff = 0.15) {
+AntiShake::AntiShake(bool shouldPrint, double maxDetDiff) {
 	eye3x3 = (Mat_<double>(3, 3) << 1, 0, 0, 0, 1, 0, 0, 0, 1);
-	this->shouldPrint = shouldPrint;
-	this->maxDetDiff = maxDetDiff;
+	this->shouldPrint = false;
+	this->maxDetDiff = 0.15;
 }
-AntiShake *AntiShake::getInstance() {
+//AntiShake::AntiShake(bool shouldPrint, double maxDetDiff) {
+//	eye3x3 = (Mat_<double>(3, 3) << 1, 0, 0, 0, 1, 0, 0, 0, 1);
+//	this->shouldPrint = shouldPrint;
+//	this->maxDetDiff = maxDetDiff;
+//}
+AntiShake *AntiShake::getInstance(bool shouldPrint, double maxDetDiff) {
 	if (!instance) {
-		instance = new AntiShake();
+		instance = new AntiShake(shouldPrint, maxDetDiff);
 	}
 	return instance;
 }
@@ -192,6 +197,10 @@ void AntiShake::reduceDifferences(Mat &img_1, Mat &img_2, Mat &workImage1, Mat &
 	cv::cvtColor(workImage2, workImage2, CV_BGR2GRAY);
 	workImage1 = BorderDetector(workImage1, 3);
 	workImage2 = BorderDetector(workImage2, 3);
+
+//	RobinsonBorders *robinson = new RobinsonBorders();
+//	workImage1 = robinson->robinsonDetectBorder(workImage1);
+//	workImage2 = robinson->robinsonDetectBorder(workImage2);
 	cout << "=== STEP 4 complete: sobelOperator" << endl;
 }
 
@@ -396,26 +405,26 @@ void AntiShake::getBestMatches(int matches_type, int nthNumber, std::vector<DMat
 	case MATCHES_QUADRANTS:
 		meanDistancesMatches(0, matches, keypoints_1, keypoints_2, absoluteRelation);
 		quadrantMethod(nthNumber, matches, keypoints_1, keypoints_2, height / 2, width / 2,
-				MATCHES_QUADRANTS, 0);
+		MATCHES_QUADRANTS, 0);
 		break;
 	case MATCHES_QUAD_PERIFERY:
 		meanDistancesMatches(0, matches, keypoints_1, keypoints_2, absoluteRelation);
 		quadrantMethod(nthNumber, matches, keypoints_1, keypoints_2, height / 2, width / 2,
-				MATCHES_QUAD_PERIFERY, 0.7);
+		MATCHES_QUAD_PERIFERY, 0.7);
 		break;
 	case MATCHES_QUAD_CENTER:
 		meanDistancesMatches(0, matches, keypoints_1, keypoints_2, absoluteRelation);
 		quadrantMethod(nthNumber, matches, keypoints_1, keypoints_2, height / 2, width / 2,
-				MATCHES_QUAD_CENTER, 0.4);
+		MATCHES_QUAD_CENTER, 0.4);
 		break;
 	case MATCHES_QUAD_DEFAULT:
 		meanDistancesMatches(0, matches, keypoints_1, keypoints_2, absoluteRelation);
 		centerPoints.insert(centerPoints.end(), matches.begin(), matches.end());
 		periferyPoints.insert(periferyPoints.end(), matches.begin(), matches.end());
 		quadrantMethod(nthNumber / 2, centerPoints, keypoints_1, keypoints_2, height / 2, width / 2,
-				MATCHES_QUAD_CENTER, 0.4);
+		MATCHES_QUAD_CENTER, 0.4);
 		quadrantMethod(nthNumber, periferyPoints, keypoints_1, keypoints_2, height / 2, width / 2,
-				MATCHES_QUAD_PERIFERY, 0.4);
+		MATCHES_QUAD_PERIFERY, 0.4);
 		matches = periferyPoints;
 		matches.insert(matches.end(), centerPoints.begin(), centerPoints.end());
 		break;
@@ -569,18 +578,18 @@ void AntiShake::meanDistancesMatches(int nthNumber, std::vector<DMatch> &matches
 // todo
 //	steb B: filters the points by mean Distance
 	std::vector<DMatch> new_matches;
-	Point2f *p1, *p2;
+	Point2f p1, p2;
 	int deltaX, deltaY;
 	int sumX = 5;
 	int sumY = 5;
 	double meanX = 5.0;
 	double meanY = 5.0;
 	for (unsigned int i = 0; i < matches.size(); i++) {
-		*p1 = keypoints_1[matches[i].queryIdx].pt;
-		*p2 = keypoints_2[matches[i].trainIdx].pt;
+		p1 = keypoints_1[matches[i].queryIdx].pt;
+		p2 = keypoints_2[matches[i].trainIdx].pt;
 
-		deltaX = abs(p1->x - p2->x);
-		deltaY = abs(p1->y - p2->y);
+		deltaX = abs(p1.x - p2.x);
+		deltaY = abs(p1.y - p2.y);
 
 		if ((abs(deltaX / meanX - 1) < absoluteRelation)
 				&& (abs(deltaY / meanY - 1) < absoluteRelation)) {

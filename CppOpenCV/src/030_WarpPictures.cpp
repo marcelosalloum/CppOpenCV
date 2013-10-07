@@ -11,12 +11,12 @@
 #include "Layer.h"
 #include "dirent.h"
 #include <iostream>
+#include "RobinsonBorders.h"
 
 using namespace std;
 using namespace cv;
 
 cv::Mat cropBeta(cv::Mat &img);
-void readme();
 int fetchSharpAreas(int argc, char** argv);
 void normalizeBrightness(std::string path1, std::string path2, double brightRate, string outputName);
 //int oldmain(int argc, char** argv);
@@ -26,26 +26,41 @@ void normalizeBrightness(std::string path1, std::string path2, double brightRate
  * @brief Main function
  */
 int main(int argc, char** argv) {
-//	cv::Mat img_1 = cv::imread(argv[1]);
-//	cv::Mat img_2 = cv::imread(argv[2]);
-//
+	cv::Mat img_1 = cv::imread(argv[1]);
+	cv::Mat img_2 = cv::imread(argv[2]);
+
+	AntiShake *aux = AntiShake::getInstance();
+	// ----- VARIABLES:
+	int loops = 1; // Numbers of times the algorithm will run again over the already tried-to-fix pictures
+	double final_pic_size = 0; //The pic size that will be used for the algorithm
+	double maxDetDiff = 0.15; // or 0.12?? -> The max value of abs(det-1), in other words, the maximum distance avoidable between the calculated Homography maytrix and the Identity
+	int featurePoints = 100;
+	int coreSize = 4;
+	double absoluteRelation = 2.0;
+	Mat H = aux->fixPictures(img_1, img_2, loops, final_pic_size, maxDetDiff, featurePoints, coreSize,
+			absoluteRelation, MATCHES_MEAN_DIST);
+	imwrite("antiSHake1.jpg", img_1); // Saves the image
+	imwrite("antiSHake2.jpg", img_2); // Saves the image
+
+//	cv::Mat img_1 = cv::imread(argv[1], CV_8U);
+//	cv::Mat img_2 = cv::imread(argv[2], CV_8U);
 //	AntiShake *aux = AntiShake::getInstance();
-//	// ----- VARIABLES:
-//	int loops = 1; // Numbers of times the algorithm will run again over the already tried-to-fix pictures
-//	double final_pic_size = 0; //The pic size that will be used for the algorithm
-//	double maxDetDiff = 0.15; // or 0.12?? -> The max value of abs(det-1), in other words, the maximum distance avoidable between the calculated Homography maytrix and the Identity
-//	int featurePoints = 300;
-//	int coreSize = 4;
-//	double absoluteRelation = 2.0;
-//	Mat H = aux->fixPictures(img_1, img_2, loops, final_pic_size, maxDetDiff, featurePoints, coreSize,
-//			absoluteRelation, MATCHES_QUAD_DEFAULT);
+//	RobinsonBorders *robinson = new RobinsonBorders();
+//	Mat out1, out2;
 //
-//	imwrite("antiSHake1.jpg", img_1); // Saves the image
-//	imwrite("antiSHake2.jpg", img_2); // Saves the image
-
-
-
-	normalizeBrightness(argv[1], argv[2], 1.0, "Teste");
+//
+//	out1 = aux->BorderDetector(img_1, 3);
+//	out2 = aux->BorderDetector(img_2, 3);
+//	imwrite("1Laplacian1.jpg", out1); // Saves the image
+//	imwrite("2Laplacian2.jpg", out2); // Saves the image
+//
+//	imwrite("1src1.jpg", img_1); // Saves the image
+//	imwrite("2src2.jpg", img_2); // Saves the image
+//
+//	out1 = robinson->robinsonDetectBorder(img_1);
+//	out2 = robinson->robinsonDetectBorder(img_2);
+//	imwrite("1robinson1.jpg", out1); // Saves the image
+//	imwrite("2robinson2.jpg", out2); // Saves the image
 
 	waitKey(0);
 	return 0;
@@ -110,7 +125,7 @@ cv::Mat cropBeta(cv::Mat &img) {
 int fetchSharpAreas(int argc, char** argv) {
 	//First of all, lets check if the number of arguments is correct
 	if (argc != 2) {
-		readme();
+//		readme();
 		return -1;
 	}
 
@@ -174,6 +189,6 @@ int fetchSharpAreas(int argc, char** argv) {
 /**
  * @function readme
  */
-void readme() {
-	std::cout << " Usage: ./SURF_Homography <img1> <img2>" << std::endl;
-}
+//void readme() {
+//	std::cout << " Usage: ./SURF_Homography <img1> <img2>" << std::endl;
+//}
