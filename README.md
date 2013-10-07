@@ -15,9 +15,9 @@ There are three projects within this git, separetad in 3 different folders:
   1. If you dont have macports, install it (from http://www.macports.org/install.php). If you do have, update and upgrade it through command line as follows:
      - $ sudo port selfupdate
      - $ sudo port upgrade outdated
-  2. Close/Open terminal.
+  2. Close and reopen the terminal.
   3. Install the OpenCV: $ sudo port install opencv
-  4. Install Cython (case you wanna build the python_cpp_interface project)
+  4. Install Cython (case you wanna build the python_cpp_interface project): $ sudo easy_install cython
   5. Make your $DYLD_LIBRARY_PATH envirnomental variable point to your dynamic lib LibCppOpenCV:
      - To check its value type: $ echo $DYLD_LIBRARY_PATH
      - To add your LibCppOpenCV's path to the variable, type: $ export DYLD_LIBRARY_PATH=~/Projects/CppOpenCV/LibCppOpenCV/Debug/:$DYLD_LIBRARY_PATH
